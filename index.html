@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>Yondr - Mind where you go</title>
+    <meta charset="utf-8" />
+    <meta name="description" content="A progressive web app to compare and contrast different job/relocation options" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="canonical" href="https://yondr.facerix.com/" />
+    <meta property="og:title" content="Yondr - Mind where you go" />
+    <meta property="og:description" content="A progressive web app to compare and contrast different job/relocation options" />
+    <meta property="og:url" content="https://yondr.facerix.com/" />
+    <meta property="og:type" content="website" />
+  
+    <!-- <link rel="icon" href="/hero.svg" sizes="any" /> -->
+    <link rel="icon" href="/icon512_maskable.png" type="image/png" />
+    <link rel="mask-icon" href="/hero.svg" color="#ffffff" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" sizes="192x192" />
+
+    <link rel="stylesheet" href="/fonts/riesling/stylesheet.css" type="text/css" charset="utf-8">
+    <link rel="stylesheet" href="/main.css" type="text/css" charset="utf-8" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <style>
+      main {
+        align-items: center;
+        justify-content: center;
+        gap: 1.5em;
+
+        h1, h2 {
+          font-family: 'rieslingregular', "Arial Narrow", Arial, sans-serif;
+          font-weight: 400;
+          margin: 0;
+          color: #7c0028;
+        }
+
+        #hero-image {
+          max-height: 30vh;
+              max-width: 90vw;
+        }
+
+        h1 {
+          font-size: 128px;
+        }
+
+        h2 {
+          font-size: 48px;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="fill-height">
+    <main class="splash">
+      <img src="/hero.svg" id="hero-image" alt="Yondr logo" />
+      <h1>YONDR</h1>
+      <h2>Mind where you go</h2>
+    
+      <a href="/explore" id="linkExplore" class="btn">
+        <img src="/images/footsteps.svg" alt="start" />
+        <span class="btn-caption">Start exploring</span>
+      </a>
+    </main>
+    <update-notification></update-notification>
+
+    <footer id="main-foot">
+      Made with&nbsp;&nbsp;♥️&nbsp;&nbsp;by&nbsp;<a href="/about.html">Rylee Corradini</a>
+    </footer>
+  </body>
+  <script src="/index.js" type="module"></script>
+</html>

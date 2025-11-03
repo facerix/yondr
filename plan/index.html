@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <title>Yondr: Plan</title>
+  <meta charset="utf-8" />
+  <meta name="description" content="A progressive web app to compare and contrast different job/relocation options" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#7c0028" />
+  <link rel="canonical" href="https://yondr.facerix.com/" />
+  <meta property="og:title" content="Yondr: about" />
+  <meta property="og:description" content="A progressive web app to compare and contrast different job/relocation options" />
+  <meta property="og:url" content="https://yondr.facerix.com/" />
+  <meta property="og:type" content="website" />
+
+  <!-- <link rel="icon" href="/hero.svg" sizes="any" /> -->
+  <link rel="icon" href="/icon512_maskable.png" type="image/png" />
+  <link rel="mask-icon" href="/hero.svg" color="#ffffff" />
+  <link rel="apple-touch-icon" href="/images/icon512_maskable.png" sizes="180x180" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/fonts/riesling/stylesheet.css" type="text/css" charset="utf-8">
+  <link rel="stylesheet" href="/main.css" />
+
+  <style>
+    #main-head h1 {
+      margin-right: auto;
+      margin-left: 0.5em;
+      padding-top: 6px;
+
+      font-family: 'rieslingregular';
+      font-weight: 400;
+    }
+
+    main {
+      flex-direction: column;
+      padding: 3em 15vw;
+
+      line-height: 1.75rem;
+      text-align: justify;
+
+      gap: 2em;
+    }
+
+    h2 {
+      margin: 0;
+      font-family: 'rieslingregular', Arial, sans-serif;
+      font-size: 3rem;
+      text-align: center;
+      color: #7c0028;
+      font-weight: 400;
+    }
+
+    .timespan {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 400;
+      color: #7c0028;
+    }
+
+    #path-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+    }
+
+    #btnAdd {
+      border: 1px dashed rgb(244, 12, 64);
+      padding: 1em;
+    }
+
+    #no-options-message {
+      text-align: center;
+      display: none;
+    }
+
+    #path-container:empty + #no-options-message {
+      display: block;
+    }
+  </style>
+</head>
+
+<body class="fill-height watermark">
+  <header id="main-head">
+    <a href="/" class="home-logo">
+      <img src="/hero.svg" width="64" alt="Yondr logo" />
+    </a>
+    <h1>YONDR</h1>
+  </header>
+  <main class="fill-height">
+    <h2>Crossroad: <span id="crossroad-name"></span></h2>
+    <div class="timespan">
+      <span id="start-date"></span>&nbsp;&ndash;&nbsp;<span id="end-date"></span>
+    </div>
+    <div id="path-container"></div>
+    <p id="no-options-message">You haven't added any options to this crossroad yet.<br/>Add one to get started!</p>
+    <button id="btnAdd" class="btn">
+      <img src="/images/pin-plus.svg" alt="add" />
+      Add an Option
+    </button>
+  </main>  
+  <edit-option-modal></edit-option-modal>
+</body>
+<script src="plan.js" type="module"></script>
+</html>

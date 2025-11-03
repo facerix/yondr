@@ -1,0 +1,14 @@
+{
+  "name": "yondr",
+  "version": "1.0.0",
+  "description": "Progressive web app to compare different job/relocation options",
+  "main": "index.html",
+  "scripts": {
+    "start": "live-server --no-browser"
+  },
+  "author": "Rylee Corradini",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}

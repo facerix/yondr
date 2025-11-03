@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <title>Yondr - Explorations</title>
+  <meta charset="utf-8" />
+  <meta name="description" content="A progressive web app to explore different job/relocation options" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="canonical" href="https://yondr.facerix.com/" />
+  <meta property="og:title" content="Yondr - Explorations" />
+  <meta property="og:description" content="A progressive web app to explore different job/relocation options" />
+  <meta property="og:url" content="https://yondr.facerix.com/" />
+  <meta property="og:type" content="website" />
+
+  <link rel="icon" href="/icon512_maskable.png" type="image/png" />
+  <link rel="mask-icon" href="/hero.svg" color="#ffffff" />
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png" sizes="192x192" />
+
+  <link rel="stylesheet" href="/fonts/riesling/stylesheet.css" type="text/css" charset="utf-8">
+  <link rel="stylesheet" href="/main.css" type="text/css" charset="utf-8" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <style>
+    h2 {
+      font-family: 'rieslingregular', "Arial Narrow", Arial, sans-serif;
+      font-weight: 400;
+      font-variant-caps: small-caps;
+      font-size: 5rem;
+      margin: 0 0 0.5em;
+      color: #7c0028;
+      text-align: center;
+    }
+
+    .preloader-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #fafafa;
+    }
+
+    main {
+      flex-direction: column;
+      padding: 3em 15vw;
+
+      line-height: 1.75rem;
+      text-align: justify;
+
+      gap: 2em;
+    }
+
+    .crossroad-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+    }
+
+    #current-crossroads:empty + #no-crossroads-message {
+      display: block;
+    }
+
+    #no-crossroads-message {
+      text-align: center;
+      display: none;
+    }
+
+    #btnAdd, #btnSetCurrentPath {
+      border: 1px dashed rgb(244, 12, 64);
+      padding: 1em;
+    }
+
+    .preloader {
+      width: calc(100% - 210px);
+      align-self: center;
+    }
+
+    .previous-section {
+      margin-top: 1em;
+      border-top: 1px solid #7c0028;
+      padding-top: 3em;
+    }
+  </style>
+</head>
+
+<body class="fill-height">
+  <header id="main-head">
+    <a class="header-identity" href="/">
+      <img id="logo" src="/hero.svg" alt="Yondr logo" />
+      <h1>Yondr</h1>
+    </a>
+  </header>
+
+  <div class="fill-height preloader-container">
+    <img class="preloader" src="/images/ripples.svg" alt="ripples" />
+  </div>
+
+  <main class="fill-height contents u-hidden">
+    <section id="current-path">
+      <h2>Current path</h2>
+      <current-path></current-path>
+    </section>
+    <h2>Current crossroads</h2>
+    <div id="current-crossroads" class="crossroad-list"></div>
+    <p id="no-crossroads-message">You haven't added any job/relocation crossroads yet.<br/>Add one to get started!</p>
+    <button id="btnAdd" class="btn">
+      <img src="/images/sign.svg" alt="add" />
+      Start a New Crossroad
+    </button>
+
+    <div class="previous-section u-hidden">
+      <h2>Previous crossroads</h2>
+      <div id="previous-crossroads" class="crossroad-list"></div>
+      <p id="no-previous-crossroads-message" class="u-hidden">You haven't added any previous job/relocation crossroads yet.<br/>Add one to get started!</p>
+    </div>
+  </main>
+
+  <confirmation-modal></confirmation-modal>
+  <edit-crossroad-modal></edit-crossroad-modal>
+  <update-notification></update-notification>
+
+</body>
+<script src="./explore.js" type="module"></script>
+
+</html>

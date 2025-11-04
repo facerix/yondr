@@ -42,9 +42,11 @@ whenLoaded.then(() => {
     crossroadName.innerText = crossroad.name;
     startDate.innerText = crossroad.startDate;
     endDate.innerText = crossroad.endDate ?? "Present";
+    
     crossroad.paths.forEach(path => {
       const pathElement = document.createElement("job-path");
-      pathElement.data = path;
+      pathElement.pathData = path;
+      pathElement.allPaths = crossroad.paths;
       pathContainer.append(pathElement);
     });
   }
@@ -68,10 +70,7 @@ whenLoaded.then(() => {
         render();
         break;
       case "add-path":
-        const path = evt.detail.affectedRecords.path;
-        const pathElement = document.createElement("job-path");
-        pathElement.data = path;
-        pathContainer.append(pathElement);
+        render();
         break;
       // case "update":
       //   idea = evt.detail.affectedRecords;

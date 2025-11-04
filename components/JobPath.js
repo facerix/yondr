@@ -234,7 +234,8 @@ const TEMPLATE = `
 
 class JobPath extends HTMLElement {
   #ready = false;
-  #data = null;
+  #pathData = null;
+  #allPaths = null;
   #container = null;
   #boundHandleRemove = null;
   constructor() {
@@ -271,22 +272,77 @@ class JobPath extends HTMLElement {
     }
   }
 
-  render() {
-    if (!this.#container) return;
+  #transformPathData(path, allPaths) {
+    // Calculate compensation (baseSalary + bonuses)
+    const baseSalary = parseFloat(path.baseSalary) || 0;
+    const bonuses = parseFloat(path.bonuses) || 0;
+    const compensation = baseSalary + bonuses;
     
-    this.#container.querySelector('h3').textContent = this.#data.name;
-    this.#container.querySelector('.location').textContent = this.#data.location;
-    this.#container.querySelector('[data-field="compensation"]').textContent = this.#data.compensation;
-    this.#container.querySelector('[data-field="compensation-fill"]').style.width = this.#data.compensationPercentage + '%';
-    this.#container.querySelector('[data-field="costOfLiving"]').textContent = this.#data.costOfLiving;
-    this.#container.querySelector('[data-field="expenses"]').textContent = this.#data.expenses;
-    this.#container.querySelector('[data-field="bottomLine"]').textContent = this.#data.bottomLine;
-    this.#container.querySelector('[data-field="bottomLine-fill"]').style.width = this.#data.bottomLinePercentage + '%';
+    // Use yearNetIncome as bottomLine, or calculate from compensation - fixedExpenses
+    const yearNetIncome = parseFloat(path.yearNetIncome) || 0;
+    const fixedExpenses = parseFloat(path.fixedExpenses) || 0;
+    const bottomLine = yearNetIncome || Math.max(0, compensation - fixedExpenses);
+    
+    // Format currency for display
+    const currency = path.currency || "USD";
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: currency,
+        maximumFractionDigits: 0
+      }).format(amount);
+    };
+    
+    // Calculate percentages relative to all paths
+    const allCompensations = allPaths.map(p => {
+      const bs = parseFloat(p.baseSalary) || 0;
+      const bn = parseFloat(p.bonuses) || 0;
+      return bs + bn;
+    });
+    const allBottomLines = allPaths.map(p => {
+      const yn = parseFloat(p.yearNetIncome) || 0;
+      const bs = parseFloat(p.baseSalary) || 0;
+      const bn = parseFloat(p.bonuses) || 0;
+      const fe = parseFloat(p.fixedExpenses) || 0;
+      return yn || Math.max(0, (bs + bn) - fe);
+    });
+    
+    const maxCompensation = Math.max(...allCompensations, compensation);
+    const maxBottomLine = Math.max(...allBottomLines, bottomLine);
+    
+    const compensationPercentage = maxCompensation > 0 ? (compensation / maxCompensation) * 100 : 0;
+    const bottomLinePercentage = maxBottomLine > 0 ? (bottomLine / maxBottomLine) * 100 : 0;
+    
+    return {
+      name: path.name,
+      location: path.location,
+      compensation: formatCurrency(compensation),
+      expenses: formatCurrency(fixedExpenses),
+      bottomLine: formatCurrency(bottomLine),
+      costOfLiving: path.costOfLiving || "—",
+      compensationPercentage: compensationPercentage.toFixed(1),
+      bottomLinePercentage: bottomLinePercentage.toFixed(1)
+    };
+  }
+
+  render() {
+    if (!this.#container || !this.#pathData || !this.#allPaths) return;
+    
+    const transformed = this.#transformPathData(this.#pathData, this.#allPaths);
+    
+    this.#container.querySelector('h3').textContent = transformed.name;
+    this.#container.querySelector('.location').textContent = transformed.location;
+    this.#container.querySelector('[data-field="compensation"]').textContent = transformed.compensation;
+    this.#container.querySelector('[data-field="compensation-fill"]').style.width = transformed.compensationPercentage + '%';
+    this.#container.querySelector('[data-field="costOfLiving"]').textContent = transformed.costOfLiving;
+    this.#container.querySelector('[data-field="expenses"]').textContent = transformed.expenses;
+    this.#container.querySelector('[data-field="bottomLine"]').textContent = transformed.bottomLine;
+    this.#container.querySelector('[data-field="bottomLine-fill"]').style.width = transformed.bottomLinePercentage + '%';
   }
 
   #handleRemove() {
     this.dispatchEvent(new CustomEvent('path-remove', {
-      detail: { path: this.#data },
+      detail: { path: this.#pathData },
       bubbles: true,
       composed: true 
     }));
@@ -307,13 +363,22 @@ class JobPath extends HTMLElement {
     }
   }
 
-  set data(data) {
-    this.#data = data;
+  set pathData(data) {
+    this.#pathData = data;
     this.render();
   }
 
-  get data() {
-    return this.#data;
+  get pathData() {
+    return this.#pathData;
+  }
+
+  set allPaths(paths) {
+    this.#allPaths = paths;
+    this.render();
+  }
+
+  get allPaths() {
+    return this.#allPaths;
   }
 
 }

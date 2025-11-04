@@ -2,6 +2,7 @@
 
 import { v4WithTimestamp } from "../src/uuid.js";
 import { calculateUSIncomeTax2025 } from "../src/utils.js";
+import "../components/LocationInputGroup.js";
 
 const CSS = `
 :host {
@@ -215,24 +216,9 @@ const TEMPLATE = `
           <label for="optionName">Option Name</label>
           <input type="text" id="optionName" name="optionName" autocomplete="off" required />
         </div>
-
-        <div class="form-group flex-1">
-          <label for="location">Location</label>
-          <input type="text" id="location" name="location" required />
-        </div>
-
-        <div class="form-group">
-          <label for="currency">Currency</label>
-          <select id="currency" name="currency" required>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="CAD">CAD</option>
-            <option value="GBP">GBP</option>
-            <option value="AUD">AUD</option>
-            <option value="NZD">NZD</option>
-          </select>
-        </div>
       </div>
+
+      <location-input-group id="locationGroup"></location-input-group>
 
       <div class="form-group-row">
         <div class="form-group flex-1">
@@ -289,6 +275,7 @@ class EditOptionModal extends HTMLElement {
   #boundHandleClose = null;
   #boundHandleSubmit = null;
   #boundUpdateTaxableIncome = null;
+  #locationInputGroup = null;
 
   constructor() {
     super();
@@ -319,6 +306,9 @@ class EditOptionModal extends HTMLElement {
     this.#boundHandleClose = this.#handleClose.bind(this);
     this.#boundHandleSubmit = this.#handleSubmit.bind(this);
     this.#boundUpdateTaxableIncome = this.#updateTaxableIncome.bind(this);
+
+    // Get reference to location input group
+    this.#locationInputGroup = this.shadowRoot.querySelector("#locationGroup");
 
     closeBtn.addEventListener("click", this.#boundHandleClose);
     cancelBtn.addEventListener("click", this.#boundHandleClose);
@@ -398,14 +388,18 @@ class EditOptionModal extends HTMLElement {
     evt.preventDefault();
     const formData = new FormData(this.shadowRoot.querySelector(".edit-form"));
     const nameValue = formData.get("optionName");
-    const locationValue = formData.get("location");
-    const currencyValue = formData.get("currency");
     const baseSalaryValue = formData.get("baseSalary");
     const bonusesValue = formData.get("bonuses");
     const fixedExpensesValue = formData.get("fixedExpenses");
     const taxableIncomeValue = formData.get("taxableIncome");
     const usTaxValue = formData.get("usTax");
     const yearNetIncomeValue = formData.get("yearNetIncome");
+    
+    // Get values from location input group
+    const locationValue = this.#locationInputGroup?.location || "";
+    const costOfLivingValue = this.#locationInputGroup?.costOfLiving || null;
+    const currencyValue = this.#locationInputGroup?.currency || "USD";
+    
     const data = {
       name: nameValue,
       location: locationValue,
@@ -413,6 +407,7 @@ class EditOptionModal extends HTMLElement {
       baseSalary: baseSalaryValue,
       bonuses: bonusesValue,
       fixedExpenses: fixedExpensesValue,
+      costOfLiving: costOfLivingValue || null,
       taxableIncome: taxableIncomeValue,
       usTax: usTaxValue,
       yearNetIncome: yearNetIncomeValue,
@@ -455,8 +450,6 @@ class EditOptionModal extends HTMLElement {
 
   #populateForm() {
     const nameInput = this.shadowRoot.querySelector("#optionName");
-    const locationInput = this.shadowRoot.querySelector("#location");
-    const currencyInput = this.shadowRoot.querySelector("#currency");
     const baseSalaryInput = this.shadowRoot.querySelector("#baseSalary");
     const bonusesInput = this.shadowRoot.querySelector("#bonuses");
     const fixedExpensesInput = this.shadowRoot.querySelector("#fixedExpenses");
@@ -468,8 +461,6 @@ class EditOptionModal extends HTMLElement {
     if (this.#mode === "add") {
       // Add mode defaults
       nameInput.value = "";
-      locationInput.value = "";
-      currencyInput.value = "USD";
       baseSalaryInput.value = 0;
       bonusesInput.value = 0;
       fixedExpensesInput.value = 0;
@@ -477,11 +468,16 @@ class EditOptionModal extends HTMLElement {
       usTaxInput.value = 0;
       // nonUsTaxInput.value = 0;
       yearNetIncomeInput.value = 0;
+      
+      // Reset location input group
+      if (this.#locationInputGroup) {
+        this.#locationInputGroup.location = "";
+        this.#locationInputGroup.costOfLiving = "";
+        this.#locationInputGroup.currency = "USD";
+      }
     } else if (this.#data) {
       // Edit mode - populate from data
       nameInput.value = this.#data.name || "";
-      locationInput.value = this.#data.location || "";
-      currencyInput.value = this.#data.currency || "USD";
       baseSalaryInput.value = this.#data.baseSalary || 0;
       bonusesInput.value = this.#data.bonuses || 0;
       fixedExpensesInput.value = this.#data.fixedExpenses || 0;
@@ -489,6 +485,13 @@ class EditOptionModal extends HTMLElement {
       usTaxInput.value = this.#data.usTax || 0;
       // nonUsTaxInput.value = this.#data.nonUsTax || 0;
       yearNetIncomeInput.value = this.#data.yearNetIncome || 0;
+      
+      // Populate location input group
+      if (this.#locationInputGroup) {
+        this.#locationInputGroup.location = this.#data.location || "";
+        this.#locationInputGroup.costOfLiving = this.#data.costOfLiving || "";
+        this.#locationInputGroup.currency = this.#data.currency || "USD";
+      }
     }
 
     // Update the header text based on mode

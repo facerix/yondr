@@ -2,18 +2,23 @@
 // This module contains reusable caching strategies and utilities
 // used by both production and development service workers
 
+// Single source of truth for service worker version
+const SW_VERSION = '1.2.0';
+
 /**
  * Configuration helper
- * Creates cache configuration from a version string and provides shared resource lists
+ * Creates cache configuration based on environment (dev vs production) and provides shared resource lists
  */
 const CacheConfig = {
-  create(version, prefix = 'yondr-cache-') {
+  create({ isDev = false, prefix = 'yondr-cache-' }) {
+    const version = `${SW_VERSION}${isDev ? '-dev' : ''}`;
     return {
       version,
       name: `${prefix}v${version}`,        // Versioned cache (HTML/CSS/JS/components)
       staticName: `${prefix}static`,        // Static cache (images/fonts - never expire)
       runtimeName: `${prefix}runtime`,      // Runtime cache (dynamically cached pages)
-      prefix
+      prefix,
+      isDev
     };
   },
   

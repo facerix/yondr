@@ -3,7 +3,7 @@
 importScripts('/sw-core.js');
 
 // Configure cache using shared config helper
-const cacheConfig = CacheConfig.create('1.2.0');
+const cacheConfig = CacheConfig.create({ isDev: false });
 const CACHE_VERSION = cacheConfig.version;
 const CACHE_NAMES = cacheConfig; // Object with name, staticName, runtimeName
 const CACHE_PREFIX = cacheConfig.prefix;

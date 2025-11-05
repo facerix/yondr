@@ -97,6 +97,7 @@ class DataStore extends EventTarget {
       fixedExpenses: 0,
       fixedExpensesCurrency: "USD",
       citizenship: null,
+      taxFilingStatus: "single",
       currentLocation: null,
       currentLocationCostOfLiving: null,
       currentLocationCostOfLivingSpend: null // e.g., rent, food

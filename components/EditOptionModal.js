@@ -123,6 +123,7 @@ const CSS = `
     font-weight: 500;
     color: var(--primary-color);
     font-size: 0.95em;
+    white-space: nowrap;
   }
 
   input[type="text"],
@@ -557,8 +558,7 @@ class EditOptionModal extends HTMLElement {
     
     // Determine tax based on citizenship
     // For US citizens (or default), use US tax calculation
-    // TODO: Add filing status to user settings (currently defaulting to married_jointly)
-    const filingStatus = "married_jointly"; // Default filing status
+    const filingStatus = userSettings.taxFilingStatus || "single";
     const usTaxUSD = userSettings.citizenship === "US" || !userSettings.citizenship 
       ? calculateUSIncomeTax2025(filingStatus, taxableIncomeUSD)
       : 0; // Non-US tax calculation not yet implemented

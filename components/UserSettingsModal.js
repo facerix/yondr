@@ -226,36 +226,19 @@ const TEMPLATE = `
     </div>
 
     <form class="settings-form">
-      <div class="section-title">Fixed Expenses (Pre-Tax)</div>
+      <div class="section-title">Current Location & Cost of Living</div>
+      <location-input-group id="currentLocationGroup"></location-input-group>
       <div class="form-group-row">
         <div class="form-group flex-1">
-          <label for="fixedExpenses">Fixed expenses (pre-tax)</label>
-          <input type="number" step="0.01" min="0" id="fixedExpenses" name="fixedExpenses" autocomplete="off" value="0" required />
-        </div>
-        <div class="form-group">
-          <label for="fixedExpensesCurrency">Currency</label>
-          <select id="fixedExpensesCurrency" name="fixedExpensesCurrency" required>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="GBP">GBP</option>
-            <option value="CAD">CAD</option>
-            <option value="AUD">AUD</option>
-            <option value="NZD">NZD</option>
-            <option value="CHF">CHF</option>
-            <option value="JPY">JPY</option>
-            <option value="SGD">SGD</option>
-            <option value="HKD">HKD</option>
-            <option value="DKK">DKK</option>
-            <option value="SEK">SEK</option>
-            <option value="NOK">NOK</option>
-          </select>
+          <label for="currentLocationCostOfLivingSpend">Cost of living spend (e.g., rent, food)</label>
+          <input type="number" step="0.01" min="0" id="currentLocationCostOfLivingSpend" name="currentLocationCostOfLivingSpend" autocomplete="off" value="0" />
         </div>
       </div>
 
-      <div class="section-title">Citizenship</div>
+      <div class="section-title">Tax Calculation</div>
       <div class="form-group-row">
         <div class="form-group flex-1">
-          <label for="citizenship">Citizenship (for tax calculations)</label>
+          <label for="citizenship">Citizenship</label>
           <select id="citizenship" name="citizenship">
             <option value="">Not specified</option>
             <option value="US">United States</option>
@@ -293,14 +276,39 @@ const TEMPLATE = `
             <option value="OTHER">Other</option>
           </select>
         </div>
+        <div class="form-group flex-1">
+          <label for="taxFilingStatus">Tax Filing Status (US)</label>
+          <select id="taxFilingStatus" name="taxFilingStatus">
+            <option value="single" selected>Single</option>
+            <option value="married_jointly">Married Filing Jointly</option>
+            <option value="married_separately">Married Filing Separately</option>
+            <option value="head_of_household">Head of Household</option>
+          </select>
+        </div>
       </div>
 
-      <div class="section-title">Current Location & Cost of Living</div>
-      <location-input-group id="currentLocationGroup"></location-input-group>
       <div class="form-group-row">
         <div class="form-group flex-1">
-          <label for="currentLocationCostOfLivingSpend">Cost of living spend (e.g., rent, food)</label>
-          <input type="number" step="0.01" min="0" id="currentLocationCostOfLivingSpend" name="currentLocationCostOfLivingSpend" autocomplete="off" value="0" />
+          <label for="fixedExpenses">Fixed pre-tax expenses (e.g. spousal/child support, insurance, etc)</label>
+          <input type="number" step="0.01" min="0" id="fixedExpenses" name="fixedExpenses" autocomplete="off" value="0" required />
+        </div>
+        <div class="form-group">
+          <label for="fixedExpensesCurrency">Currency</label>
+          <select id="fixedExpensesCurrency" name="fixedExpensesCurrency" required>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+            <option value="CAD">CAD</option>
+            <option value="AUD">AUD</option>
+            <option value="NZD">NZD</option>
+            <option value="CHF">CHF</option>
+            <option value="JPY">JPY</option>
+            <option value="SGD">SGD</option>
+            <option value="HKD">HKD</option>
+            <option value="DKK">DKK</option>
+            <option value="SEK">SEK</option>
+            <option value="NOK">NOK</option>
+          </select>
         </div>
       </div>
 
@@ -390,6 +398,7 @@ class UserSettingsModal extends HTMLElement {
     const fixedExpensesValue = formData.get("fixedExpenses");
     const fixedExpensesCurrencyValue = formData.get("fixedExpensesCurrency");
     const citizenshipValue = formData.get("citizenship") || null;
+    const taxFilingStatusValue = formData.get("taxFilingStatus") || "single";
     
     // Get values from location input group
     const currentLocationValue = this.#currentLocationGroup?.location || null;
@@ -400,6 +409,7 @@ class UserSettingsModal extends HTMLElement {
       fixedExpenses: fixedExpensesValue ? parseFloat(fixedExpensesValue) : 0,
       fixedExpensesCurrency: fixedExpensesCurrencyValue,
       citizenship: citizenshipValue || null,
+      taxFilingStatus: taxFilingStatusValue,
       currentLocation: currentLocationValue || null,
       currentLocationCostOfLiving: currentLocationCostOfLivingValue || null,
       currentLocationCostOfLivingSpend: currentLocationCostOfLivingSpendValue ? parseFloat(currentLocationCostOfLivingSpendValue) : null
@@ -417,12 +427,14 @@ class UserSettingsModal extends HTMLElement {
     const fixedExpensesInput = this.shadowRoot.querySelector("#fixedExpenses");
     const fixedExpensesCurrencyInput = this.shadowRoot.querySelector("#fixedExpensesCurrency");
     const citizenshipInput = this.shadowRoot.querySelector("#citizenship");
+    const taxFilingStatusInput = this.shadowRoot.querySelector("#taxFilingStatus");
     const currentLocationCostOfLivingSpendInput = this.shadowRoot.querySelector("#currentLocationCostOfLivingSpend");
 
     if (settings) {
       fixedExpensesInput.value = settings.fixedExpenses || 0;
       fixedExpensesCurrencyInput.value = settings.fixedExpensesCurrency || "USD";
       citizenshipInput.value = settings.citizenship || "";
+      taxFilingStatusInput.value = settings.taxFilingStatus || "single";
       
       if (this.#currentLocationGroup) {
         this.#currentLocationGroup.location = settings.currentLocation || "";
@@ -436,6 +448,7 @@ class UserSettingsModal extends HTMLElement {
       fixedExpensesInput.value = 0;
       fixedExpensesCurrencyInput.value = "USD";
       citizenshipInput.value = "";
+      taxFilingStatusInput.value = "single";
       
       if (this.#currentLocationGroup) {
         this.#currentLocationGroup.location = "";

@@ -6,6 +6,7 @@ import DataStore from "../src/DataStore.js";
 import { CurrencyClient } from "../src/currencyClient.js";
 import { lookupCostOfLiving } from "../src/costOfLivingData.js";
 import "../components/LocationInputGroup.js";
+import "../components/PopoverInfo.js";
 
 const CSS = `
 :host {
@@ -172,69 +173,6 @@ const CSS = `
     align-items: center;
     gap: 0.5em;
   }
-
-  .info-icon {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    color: var(--primary-color);
-    cursor: help;
-    transition: opacity 0.2s ease;
-
-    svg {
-      width: 100%;
-      height: 100%;
-    }
-
-    &:hover {
-      opacity: 0.7;
-    }
-  }
-
-  .info-popover {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-bottom: 8px;
-    padding: 0.75em 1em;
-    background-color: #333;
-    color: white;
-    border-radius: 4px;
-    font-size: 0.85em;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-    z-index: 1000;
-    width: 250px;
-    min-width: 250px;
-    white-space: normal;
-    text-align: left;
-
-    &::after {
-      content: '';
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      border: 6px solid transparent;
-      border-top-color: #333;
-    }
-  }
-
-  .info-container {
-    position: relative;
-    display: inline-flex;
-
-    .info-icon:hover ~ .info-popover,
-    .info-icon:focus ~ .info-popover {
-      opacity: 1;
-      pointer-events: auto;
-    }
-  }
 }
 
 .flex-1 {
@@ -328,22 +266,23 @@ const TEMPLATE = `
       <div class="form-group-row">
         <div class="form-group flex-1">
           <label class="label-with-info">
-            Fixed expenses (pre-tax)
-            <span class="info-container">
-              <span class="info-icon" tabindex="0" aria-label="Information about fixed expenses">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                  <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
-                </svg>
-              </span>
-              <span class="info-popover">Fixed expenses are managed in User Settings. Click the person icon in the header to update them.</span>
-            </span>
+            Fixed expenses
+            <popover-info 
+              content="Fixed expenses are managed in User Settings. Click the person icon in the header to update them."
+              aria-label="Information about fixed expenses">
+            </popover-info>
           </label>
           <div class="read-only-value" id="fixedExpenses"></div>
         </div>
 
         <div class="form-group flex-1">
-          <label for="estimatedCostOfLiving">Estimated cost of living</label>
+          <label class="label-with-info">
+            Est. cost of living
+            <popover-info 
+              content="The estimated cost of living is calculated based on the cost of living index for this location and the user's current spend, as defined in User Settings."
+              aria-label="Information about estimated cost of living">
+            </popover-info>
+          </label>
           <div class="read-only-value" id="estimatedCostOfLivingDisplay"></div>
         </div>
 

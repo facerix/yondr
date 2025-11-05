@@ -2,6 +2,7 @@
 
 import { CensusClient } from "../src/censusClient.js";
 import { lookupCostOfLiving } from "../src/costOfLivingData.js";
+import "./PopoverInfo.js";
 
 const CSS = `
 :host {
@@ -103,72 +104,6 @@ const CSS = `
   align-items: center;
   gap: 0.5em;
 }
-
-.hint-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1em;
-  height: 1em;
-  cursor: help;
-  position: relative;
-  color: var(--primary-color);
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
-}
-
-.hint-icon:hover,
-.hint-icon:focus-visible {
-  opacity: 1;
-  outline: none;
-}
-
-.hint-icon:focus-visible {
-  outline: 2px double var(--primary-color);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-.hint-icon svg {
-  width: 100%;
-  height: 100%;
-  fill: currentColor;
-}
-
-.hint-popover {
-  position: absolute;
-  bottom: calc(100% + 0.5em);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--primary-color);
-  color: white;
-  padding: 0.75em 1em;
-  border-radius: 4px;
-  font-size: 0.875em;
-  white-space: nowrap;
-  z-index: 1000;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.hint-popover::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: var(--primary-color);
-}
-
-.hint-icon:hover .hint-popover,
-.hint-icon:focus-visible .hint-popover {
-  opacity: 1;
-  visibility: visible;
-}
 `;
 
 const TEMPLATE = `
@@ -181,13 +116,10 @@ const TEMPLATE = `
     <div class="form-group">
       <label for="costOfLiving" class="label-with-hint">
         Cost of Living Index
-        <span class="hint-icon" tabindex="0" role="button" aria-label="Cost of living index explanation">
-          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
-          </svg>
-          <span class="hint-popover">NYC has a cost of living index of 100</span>
-        </span>
+        <popover-info 
+          content="The cost of living index compares the cost of living in any location to New York City (100). A lower number means it's cheaper to live there, while a higher number means it's more expensive."
+          aria-label="Cost of living index explanation">
+        </popover-info>
       </label>
       <div class="input-wrapper">
         <input type="number" step="0.1" min="0" id="costOfLiving" autocomplete="off" placeholder="Auto-filled from location" />

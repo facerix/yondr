@@ -280,7 +280,7 @@ class CurrentPath extends HTMLElement {
     editActions.classList.remove('u-hidden');
     const { name, currency, yearNetIncome } = this.#data;
     
-    const bottomLine = new Intl.NumberFormat(undefined, { style: "currency", currency }).format(yearNetIncome);
+    const bottomLine = new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(yearNetIncome);
     pathNameElement.textContent = name;
     bottomLineElement.textContent = `Bottom Line: ${ bottomLine }`;
   }

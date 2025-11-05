@@ -67,7 +67,7 @@
       gap: 1em;
 
       job-path {
-        flex: 1 1 300px;
+        flex: 1 1 250px;
       }
     }
 
@@ -84,6 +84,28 @@
     #path-container:empty + #no-options-message {
       display: block;
     }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      color: #7c0028;
+      cursor: pointer;
+      padding: 0.5em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+      transition: opacity 0.2s ease;
+    }
+
+    .settings-btn:hover {
+      opacity: 0.7;
+    }
+
+    .settings-btn svg {
+      width: 24px;
+      height: 24px;
+    }
   </style>
 </head>
 
@@ -93,6 +115,12 @@
       <img src="/hero.svg" width="64" alt="Yondr logo" />
     </a>
     <h1>YONDR</h1>
+    <button id="btnSettings" class="settings-btn" title="User Settings" aria-label="Open user settings">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+        <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z"/>
+      </svg>
+    </button>
   </header>
   <main class="fill-height">
     <h2>Crossroad: <span id="crossroad-name"></span></h2>
@@ -107,6 +135,7 @@
     </button>
   </main>  
   <edit-option-modal></edit-option-modal>
+  <user-settings-modal></user-settings-modal>
 </body>
 <script src="plan.js" type="module"></script>
 </html>

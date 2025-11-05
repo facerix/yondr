@@ -13,8 +13,9 @@ export class CurrencyClient {
 
   loadFromLocalStorage() {
     const stored = window.localStorage.getItem(this.localStorageKey) || '{}';
-    this.cachedRates = JSON.parse(stored);
-    this.lastUpdated = this.cachedRates.lastUpdated || null;
+    const data = JSON.parse(stored);
+    this.cachedRates = data.rates || {};
+    this.lastUpdated = data.lastUpdated || null;
   }
 
   saveToLocalStorage() {

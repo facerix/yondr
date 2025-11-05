@@ -42,6 +42,7 @@ const CacheConfig = {
       '/components/JobPath.js',
       '/components/LocationInputGroup.js',
       '/components/UpdateNotification.js',
+      '/components/UserSettingsModal.js',
       '/explore/index.html',
       '/explore/explore.js',
       '/plan/index.html',

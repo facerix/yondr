@@ -3,6 +3,7 @@ import '/components/ConfirmationModal.js';
 import '/components/CrossroadSummary.js';
 import '/components/CurrentPath.js';
 import '/components/EditCrossroadModal.js';
+import '/components/UserSettingsModal.js';
 import '/components/UpdateNotification.js';
 import DataStore from '/src/DataStore.js';
 import ServiceWorkerManager from '/src/ServiceWorkerManager.js';
@@ -14,6 +15,7 @@ const whenLoaded = Promise.all(
     customElements.whenDefined("current-path"),
     customElements.whenDefined("edit-crossroad-modal"),
     customElements.whenDefined("edit-option-modal"),
+    customElements.whenDefined("user-settings-modal"),
     customElements.whenDefined("update-notification"),
   ],
 );
@@ -35,16 +37,31 @@ whenLoaded.then(() => {
   const previousCrossroads = document.querySelector("#previous-crossroads");
   const previousSection = document.querySelector(".previous-section");
   const btnAdd = document.querySelector("#btnAdd");
+  const btnSettings = document.querySelector("#btnSettings");
   const currentPathElement = document.querySelector("current-path");
 
   // Create the edit modal
   const confirmationModal = document.querySelector("confirmation-modal");
   const editCrossroadModal = document.querySelector("edit-crossroad-modal");
+  const userSettingsModal = document.querySelector("user-settings-modal");
 
   btnAdd.addEventListener("click", evt => {
     evt.preventDefault();
     editCrossroadModal.mode = "add";
     editCrossroadModal.open();
+  });
+
+  // Settings button handler
+  btnSettings.addEventListener("click", () => {
+    const currentSettings = DataStore.getUserSettings();
+    userSettingsModal.loadSettings(currentSettings);
+    userSettingsModal.open();
+  });
+
+  // Save user settings
+  userSettingsModal.addEventListener("settings-save", (evt) => {
+    const settings = evt.detail.settings;
+    DataStore.updateUserSettings(settings);
   });
 
   DataStore.init();

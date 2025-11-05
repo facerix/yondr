@@ -22,6 +22,7 @@ class DataStore extends EventTarget {
   #crossroads = [];
   #crossroadsById = new Map(); // map from uuid to crossroad object
   #currentPath = null;
+  #userSettings = null;
 
   constructor() {
     if (instance) {
@@ -51,6 +52,7 @@ class DataStore extends EventTarget {
     }
     this.#crossroads = this.#loadRecordsFromJson(savedCrossroadsJson);
     this.#currentPath = JSON.parse(window.localStorage.getItem("currentPath")) || null;
+    this.#loadUserSettings();
     this.#reindex();
 
     setTimeout(() => {
@@ -70,6 +72,35 @@ class DataStore extends EventTarget {
 
   #saveCrossroads() {
     window.localStorage.setItem("crossroads", JSON.stringify(this.#crossroads));
+  }
+
+  #saveUserSettings() {
+    window.localStorage.setItem("userSettings", JSON.stringify(this.#userSettings));
+  }
+
+  #loadUserSettings() {
+    const saved = window.localStorage.getItem("userSettings");
+    if (saved) {
+      try {
+        this.#userSettings = JSON.parse(saved);
+      } catch (e) {
+        console.error("Error loading user settings:", e);
+        this.#userSettings = this.#getDefaultUserSettings();
+      }
+    } else {
+      this.#userSettings = this.#getDefaultUserSettings();
+    }
+  }
+
+  #getDefaultUserSettings() {
+    return {
+      fixedExpenses: 0,
+      fixedExpensesCurrency: "USD",
+      citizenship: null,
+      currentLocation: null,
+      currentLocationCostOfLiving: null,
+      currentLocationCostOfLivingSpend: null // e.g., rent, food
+    };
   }
 
   #emitChangeEvent(changeType, affectedRecords) {
@@ -129,9 +160,6 @@ class DataStore extends EventTarget {
       id: v4WithTimestamp(),
       paths: crossroad.paths || [],
     };
-    if (this.#currentPath) {
-      newCrossroad.paths.unshift(this.#currentPath);
-    }
     this.#crossroads.unshift(newCrossroad);
     this.#reindex();
     this.#emitChangeEvent("add-crossroad", newCrossroad);
@@ -183,6 +211,16 @@ class DataStore extends EventTarget {
       this.#reindex();
       this.#emitChangeEvent("delete-path", { crossroadId, pathId });
     }
+  }
+
+  getUserSettings() {
+    return { ...this.#userSettings };
+  }
+
+  updateUserSettings(settings) {
+    this.#userSettings = { ...this.#userSettings, ...settings };
+    this.#saveUserSettings();
+    this.#emitChangeEvent("update-user-settings", settings);
   }
 }
 

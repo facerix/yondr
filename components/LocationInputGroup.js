@@ -311,7 +311,9 @@ class LocationInputGroup extends HTMLElement {
     // Show loading spinner
     const spinner = this.shadowRoot.querySelector("#costOfLivingSpinner");
     if (spinner) {
-      spinner.classList.add("visible");
+      requestAnimationFrame(() => {
+        spinner.classList.add("visible");
+      });
     }
 
     try {
@@ -376,7 +378,9 @@ class LocationInputGroup extends HTMLElement {
       // Hide loading spinner
       const spinner = this.shadowRoot.querySelector("#costOfLivingSpinner");
       if (spinner) {
-        spinner.classList.remove("visible");
+        requestAnimationFrame(() => {
+          spinner.classList.remove("visible");
+        });
       }
     }
 

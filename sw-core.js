@@ -3,7 +3,7 @@
 // used by both production and development service workers
 
 // Single source of truth for service worker version
-const SW_VERSION = '2.0.0';
+const SW_VERSION = '2.0.2';
 
 /**
  * Configuration helper
@@ -30,6 +30,7 @@ const CacheConfig = {
     return [
       '/',
       '/about.html',
+      '/about.js',
       '/index.html',
       '/index.js',
       '/main.css',
@@ -48,6 +49,7 @@ const CacheConfig = {
       '/plan/index.html',
       '/plan/plan.js',
       '/src/censusClient.js',
+      '/src/clearAppCache.js',
       '/src/costOfLivingData.js',
       '/src/currencyClient.js',
       '/src/DataStore.js',

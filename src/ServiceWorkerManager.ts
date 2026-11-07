@@ -57,7 +57,7 @@ class ServiceWorkerManager {
       }
 
       // Register the service worker
-      this.#registration = await navigator.serviceWorker.register(this.#swFile);
+      this.#registration = await navigator.serviceWorker.register(this.#swFile, { updateViaCache: 'none' });
       this.#isRegistered = true;
 
       console.log(`[Yondr] Service Worker registered successfully:`, this.#registration.scope);
@@ -130,7 +130,7 @@ class ServiceWorkerManager {
    * Get cache information from the service worker
    * @returns {Promise<Object>}
    */
-  async getCacheInfo() {
+  async getCacheInfo(): Promise<{ version: string; cacheName: string } | null> {
     if (!this.#registration || !this.#registration.active) {
       return null;
     }

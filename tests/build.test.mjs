@@ -38,12 +38,12 @@ test('page icons and static assets resolve in dist', async () => {
 });
 
 test('HTML entry points and compiled module imports resolve in dist', async () => {
-  const htmlFiles = ['index.html', 'explore/index.html', 'plan/index.html'];
+  const htmlFiles = ['index.html', 'about.html', 'explore/index.html', 'plan/index.html'];
   const pending = [];
   for (const file of htmlFiles) {
     const html = await readFile(join(dist, file), 'utf8');
-    for (const match of html.matchAll(/<script[^>]+src=["']([^"']+\.js)["']/g)) {
-      const url = match[1];
+    for (const match of html.matchAll(/<script[^>]+src=["']([^"']+\.js(?:\?[^"']*)?)["']/g)) {
+      const url = match[1].split('?')[0];
       const rel = url.startsWith('/') ? url.slice(1) : join(dirname(file), url);
       await expectDistFile(rel);
       pending.push(rel);

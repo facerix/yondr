@@ -40,6 +40,32 @@
       text-align: justify;
     }
 
+    .debug-info {
+      margin-top: 1.5em;
+      border-top: 1px solid #ddbfc6;
+      padding-top: 1em;
+      text-align: left;
+    }
+
+    .debug-info summary {
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .debug-info button {
+      border: 1px solid #7c0028;
+      color: #7c0028;
+    }
+
+    .debug-info button:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+
+    .debug-info #cache-status {
+      margin-top: 0.5em;
+    }
+
     /* responsive design (breakpoints adopted from Bootstrap) */
 
     /* Small devices (e.g. phones, 575px and under) */
@@ -111,7 +137,15 @@
       <a href="https://www.svgbackgrounds.com/elements/animated-svg-preloaders" target="_blank">SVGBackgrounds.com</a>.
       All were tweaked by me, because SVG is rad that way.
     </p>
+
+    <details class="debug-info">
+      <summary>Debug Info</summary>
+      <p><strong>Current version:</strong> <span id="current-version">Checking…</span></p>
+      <button type="button" id="clear-cache">Clear cache and update</button>
+      <p id="cache-status" role="status" aria-live="polite"></p>
+    </details>
   </main>
+  <script src="/about.js?v=2.0.2" type="module"></script>
 </body>
 
 </html>

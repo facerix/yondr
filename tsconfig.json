@@ -16,6 +16,6 @@
     "sourceMap": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "components/**/*", "explore/**/*.ts", "plan/**/*.ts", "index.ts"],
+  "include": ["src/**/*", "components/**/*", "explore/**/*.ts", "plan/**/*.ts", "index.ts", "about.ts"],
   "exclude": ["node_modules", "dist", "tests"]
 }

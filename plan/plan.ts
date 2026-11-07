@@ -22,9 +22,9 @@ whenLoaded.then(() => {
   const crossroadId = url.searchParams.get("crossroad");
   DataStore.init();
   window.currencyClient = new CurrencyClient();
-  window.currencyClient.getExchangeRate("USD", "EUR").then(rate => {
-    console.log(rate);
-  });
+  // window.currencyClient.getExchangeRate("USD", "EUR").then(rate => {
+  //   console.log(rate);
+  // });
 
   // Load user settings into modal
   const userSettings = DataStore.getUserSettings();

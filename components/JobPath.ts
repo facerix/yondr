@@ -3,7 +3,7 @@
 import DataStore from "../src/DataStore.js";
 import { CurrencyClient } from "../src/currencyClient.js";
 import "./PopoverInfo.js";
-import { hasConcreteSalary, sortTimeline, validateHttpUrl } from '../src/jobPathModel.js';
+import { formatEquityGrant, formatEquityTerms, formatJobOptionName, hasConcreteSalary, sortTimeline, validateHttpUrl } from '../src/jobPathModel.js';
 import { renderNoteMarkdown } from '../src/noteMarkdown.js';
 
 const CSS = `
@@ -271,6 +271,10 @@ h3 {
 }
 
 .job-meta, .latest-note { margin: 0.25em 0 0.75em; color: var(--primary-color); }
+.equity { overflow-wrap: anywhere; }
+.equity .metric-row { align-items: flex-start; gap: 0.75em; }
+.equity .metric-value { text-align: right; }
+.equity small { display: block; color: var(--text-muted); }
 .job-link { overflow-wrap: anywhere; }
 .timeline { margin-top: 1em; border-top: 1px solid var(--border-color); padding-top: 0.75em; }
 .timeline ol { padding-left: 1.4em; }
@@ -314,6 +318,14 @@ const TEMPLATE = `
       <div class="progress-track">
         <div class="progress-fill" data-field="compensation-fill"></div>
       </div>
+    </div>
+
+    <div class="metric equity" hidden>
+      <div class="metric-row">
+        <span class="metric-label">Equity</span>
+        <span class="metric-value equity-summary"></span>
+      </div>
+      <small class="equity-details"></small>
     </div>
 
     <div class="metric">
@@ -482,7 +494,7 @@ class JobPath extends HTMLElement {
     const bottomLinePercentage = maxBottomLine > 0 ? (bottomLine / maxBottomLine) * 100 : 0;
     
     return {
-      name: path.name,
+      name: formatJobOptionName(path),
       location: path.location,
       compensation: concrete ? formatCurrency(compensation) : this.#formatSalaryRange(path, formatCurrency),
       expenses: formatCurrency(convertedFixedExpenses),
@@ -517,8 +529,15 @@ class JobPath extends HTMLElement {
       locationEl.append(document.createTextNode(` (${transformed.costOfLiving})`));
     }
     const path = this.#pathData;
-    const meta = [path.company, path.role, path.workPolicy === 'in-office' ? 'In office' : path.workPolicy === 'hybrid' ? `Hybrid · ${path.officeDays ?? '?'} office days/week` : path.workPolicy === 'remote' ? 'Remote' : '', this.#readonly ? '' : (path.status || 'Interested')].filter(Boolean);
+    const meta = [path.workPolicy === 'in-office' ? 'In office' : path.workPolicy === 'hybrid' ? `Hybrid · ${path.officeDays ?? '?'} office days/week` : path.workPolicy === 'remote' ? 'Remote' : '', this.#readonly ? '' : (path.status || 'Interested')].filter(Boolean);
     this.#container.querySelector('.job-meta').textContent = meta.join(' · ');
+    const equityElement = this.#container.querySelector('.equity');
+    equityElement.hidden = !path.equity?.type;
+    if (path.equity?.type) {
+      equityElement.querySelector('.equity-summary').textContent = formatEquityGrant(path.equity);
+      const details = [formatEquityTerms(path.equity), path.equity.vestingStart ? `Starts ${path.equity.vestingStart}` : '', path.equity.notes || '', 'Excluded from cash totals'].filter(Boolean);
+      equityElement.querySelector('.equity-details').textContent = details.join(' · ');
+    }
     const listing = this.#container.querySelector('.job-link');
     try {
       listing.href = validateHttpUrl(path.listingUrl);

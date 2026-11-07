@@ -131,6 +131,7 @@ const CSS = `
   input[type="text"],
   input[type="url"],
   input[type="number"],
+  input[type="date"],
   select {
     padding: 0.75em;
     border: 1px solid var(--border-color);
@@ -248,15 +249,8 @@ const TEMPLATE = `
 
     <form class="edit-form">
       <div class="form-group-row">
-        <div class="form-group flex-1">
-          <label for="optionName">Option Name</label>
-          <input type="text" id="optionName" name="optionName" autocomplete="off" required />
-        </div>
-      </div>
-
-      <div class="form-group-row">
-        <div class="form-group flex-1"><label for="company">Company</label><input type="text" id="company" name="company" /></div>
-        <div class="form-group flex-1"><label for="role">Role</label><input type="text" id="role" name="role" /></div>
+        <div class="form-group flex-1"><label for="company">Company</label><input type="text" id="company" name="company" required /></div>
+        <div class="form-group flex-1"><label for="role">Role</label><input type="text" id="role" name="role" required /></div>
       </div>
       <div class="form-group-row">
         <div class="form-group flex-1"><label for="listingUrl">Job listing URL</label><input type="url" id="listingUrl" name="listingUrl" placeholder="https://…" /></div>
@@ -287,6 +281,27 @@ const TEMPLATE = `
       <div class="form-group-row">
         <div class="form-group flex-1"><label for="salaryMin">Salary range minimum</label><input type="number" step="0.01" min="0" id="salaryMin" name="salaryMin" /></div>
         <div class="form-group flex-1"><label for="salaryMax">Salary range maximum</label><input type="number" step="0.01" min="0" id="salaryMax" name="salaryMax" /></div>
+      </div>
+
+      <div class="form-group-row">
+        <div class="form-group flex-1"><label for="equityType">Equity grant</label><select id="equityType" name="equityType">
+          <option value="">None or unknown</option><option value="options">Stock options</option><option value="rsu">RSUs</option>
+        </select></div>
+      </div>
+      <div id="equityDetails" hidden>
+        <div class="form-group-row">
+          <div class="form-group flex-1"><label for="equityQuantity">Shares or units granted</label><input type="number" step="any" min="0" id="equityQuantity" name="equityQuantity" /></div>
+          <div class="form-group flex-1" id="strikePriceGroup"><label for="strikePrice">Strike price per option</label><input type="number" step="0.01" min="0" id="strikePrice" name="strikePrice" /></div>
+          <div class="form-group flex-1" id="strikeCurrencyGroup"><label for="strikeCurrency">Strike currency</label><input type="text" id="strikeCurrency" name="strikeCurrency" maxlength="3" placeholder="USD" /></div>
+          <div class="form-group flex-1"><label for="vestingStart">Vesting start date</label><input type="date" id="vestingStart" name="vestingStart" /></div>
+        </div>
+        <div class="form-group-row">
+          <div class="form-group flex-1"><label for="vestingMonths">Vesting duration (months)</label><input type="number" step="1" min="1" id="vestingMonths" name="vestingMonths" /></div>
+          <div class="form-group flex-1"><label for="cliffMonths">Cliff (months, 0 if none)</label><input type="number" step="1" min="0" id="cliffMonths" name="cliffMonths" /></div>
+          <div class="form-group flex-1"><label for="vestingCadence">Vest after cliff</label><select id="vestingCadence" name="vestingCadence"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annually">Annually</option></select></div>
+        </div>
+        <div class="form-group-row"><div class="form-group flex-1"><label for="equityNotes">Equity notes</label><input type="text" id="equityNotes" name="equityNotes" placeholder="Exercise window, refresh grants, etc." /></div></div>
+        <p>Equity is shown separately from cash compensation and tax estimates.</p>
       </div>
 
       <div class="form-group-row">
@@ -398,6 +413,7 @@ class EditOptionModal extends HTMLElement {
     const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
     const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
     this.shadowRoot.querySelector('#workPolicy').addEventListener('change', () => this.#updateOfficeDays());
+    this.shadowRoot.querySelector('#equityType').addEventListener('change', () => this.#updateEquityFields());
 
     baseSalaryInput.addEventListener("input", this.#boundUpdateTaxableIncome);
     bonusesInput.addEventListener("input", this.#boundUpdateTaxableIncome);
@@ -654,12 +670,23 @@ class EditOptionModal extends HTMLElement {
   async #handleSubmit(evt) {
     evt.preventDefault();
     const formData = new FormData(this.shadowRoot.querySelector(".edit-form"));
-    const nameValue = formData.get("optionName");
     const baseSalaryValue = formData.get("baseSalary");
     const bonusesValue = formData.get("bonuses");
     const taxableIncomeValue = formData.get("taxableIncome");
     const usTaxValue = formData.get("usTax");
     const yearNetIncomeValue = formData.get("yearNetIncome");
+    const equityType = formData.get('equityType');
+    const equity = equityType ? {
+      type: equityType,
+      quantity: formData.get('equityQuantity'),
+      strikePrice: equityType === 'options' ? formData.get('strikePrice') : null,
+      strikeCurrency: equityType === 'options' ? String(formData.get('strikeCurrency') || 'USD').trim().toUpperCase() : null,
+      vestingStart: formData.get('vestingStart'),
+      vestingMonths: formData.get('vestingMonths'),
+      cliffMonths: formData.get('cliffMonths'),
+      cadence: formData.get('vestingCadence'),
+      notes: String(formData.get('equityNotes') || '').trim(),
+    } : null;
     
     // Get values from location input group (job location, not current location)
     const locationValue = this.#locationInputGroup?.location || "";
@@ -705,7 +732,6 @@ class EditOptionModal extends HTMLElement {
     }
     
     const data: { id?: string; [key: string]: unknown } = {
-      name: nameValue,
       company: String(formData.get('company') || '').trim(),
       role: String(formData.get('role') || '').trim(),
       listingUrl: String(formData.get('listingUrl') || '').trim(),
@@ -718,6 +744,7 @@ class EditOptionModal extends HTMLElement {
       salaryMin: formData.get('salaryMin') || null,
       salaryMax: formData.get('salaryMax') || null,
       bonuses: bonusesValue,
+      equity,
       costOfLiving: costOfLivingValue || null,
       costOfLivingSpend: costOfLivingSpendValue,
       taxableIncome: baseSalaryValue === '' ? null : taxableIncomeValue,
@@ -776,7 +803,6 @@ class EditOptionModal extends HTMLElement {
   }
 
   #populateForm() {
-    const nameInput = this.shadowRoot.querySelector<HTMLInputElement>("#optionName");
     const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
     const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
     const taxableIncomeInput = this.shadowRoot.querySelector<HTMLInputElement>("#taxableIncome");
@@ -796,6 +822,16 @@ class EditOptionModal extends HTMLElement {
     this.shadowRoot.querySelector<HTMLSelectElement>('#workPolicy').value = this.#mode === 'edit' ? (this.#data?.workPolicy || '') : '';
     this.shadowRoot.querySelector<HTMLInputElement>('#officeDays').value = this.#mode === 'edit' ? (this.#data?.officeDays ?? '') : '';
     this.#updateOfficeDays();
+    const equity = this.#mode === 'edit' ? this.#data?.equity : null;
+    this.shadowRoot.querySelector<HTMLSelectElement>('#equityType').value = equity?.type || '';
+    for (const [field, value] of Object.entries({
+      equityQuantity: equity?.quantity, strikePrice: equity?.strikePrice, strikeCurrency: equity?.strikeCurrency || 'USD', vestingStart: equity?.vestingStart,
+      vestingMonths: equity?.vestingMonths, cliffMonths: equity?.cliffMonths, equityNotes: equity?.notes,
+    })) {
+      this.shadowRoot.querySelector<HTMLInputElement>(`#${field}`).value = value ?? '';
+    }
+    this.shadowRoot.querySelector<HTMLSelectElement>('#vestingCadence').value = equity?.cadence || 'monthly';
+    this.#updateEquityFields();
 
     // Get fixed expenses from user settings and format as currency
     const userSettings = DataStore.getUserSettings();
@@ -810,7 +846,6 @@ class EditOptionModal extends HTMLElement {
 
     if (this.#mode === "add") {
       // Add mode defaults
-      nameInput.value = "";
       baseSalaryInput.value = "";
       bonusesInput.value = "0";
       taxableIncomeInput.value = "0";
@@ -850,7 +885,6 @@ class EditOptionModal extends HTMLElement {
       }
     } else if (this.#data) {
       // Edit mode - populate from data
-      nameInput.value = this.#data.name || "";
       baseSalaryInput.value = this.#data.baseSalary ?? '';
       bonusesInput.value = this.#data.bonuses || 0;
       const taxableIncomeValue = parseFloat(this.#data.taxableIncome) || 0;
@@ -916,6 +950,16 @@ class EditOptionModal extends HTMLElement {
     group.querySelector('input').required = hybrid;
   }
 
+  #updateEquityFields() {
+    const type = this.shadowRoot.querySelector<HTMLSelectElement>('#equityType').value;
+    this.shadowRoot.querySelector<HTMLElement>('#equityDetails').hidden = !type;
+    this.shadowRoot.querySelector<HTMLElement>('#strikePriceGroup').hidden = type !== 'options';
+    this.shadowRoot.querySelector<HTMLElement>('#strikeCurrencyGroup').hidden = type !== 'options';
+    for (const field of ['equityQuantity', 'vestingMonths', 'cliffMonths']) {
+      this.shadowRoot.querySelector<HTMLInputElement>(`#${field}`).required = Boolean(type);
+    }
+  }
+
   open() {
     this.#isOpen = true;
     // Refresh fixed expenses from user settings when opening
@@ -938,9 +982,9 @@ class EditOptionModal extends HTMLElement {
     }
     const overlay = this.shadowRoot.querySelector(".modal-overlay");
     overlay.classList.add("visible");
-    // Focus the name input for better UX
+    // Focus the first identifying field.
     setTimeout(() => {
-      this.shadowRoot.querySelector<HTMLInputElement>("#optionName").focus();
+      this.shadowRoot.querySelector<HTMLInputElement>("#company").focus();
     }, 100);
   }
 

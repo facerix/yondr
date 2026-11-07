@@ -17,10 +17,12 @@ test('legacy paths load with stable IDs and empty job fields', async () => {
   assert.equal(path.baseSalary, '100000');
   assert.equal(path.status, 'Interested');
   assert.deepEqual(path.timeline, []);
+  store.updatePath('crossroad', { id: 'legacy', bonuses: '1000' });
+  assert.equal(store.getPathById('legacy').name, 'Old');
 });
 
 test('job fields and timeline CRUD survive reload', async () => {
-  const path = { id: 'legacy', name: 'Old', baseSalary: null, company: 'Acme', role: 'Engineer', workPolicy: 'hybrid', officeDays: 2, salaryMin: '90000', salaryMax: '120000', listingUrl: 'https://example.com/job', timeline: [] };
+  const path = { id: 'legacy', name: 'Old', baseSalary: null, company: 'Acme', role: 'Engineer', workPolicy: 'hybrid', officeDays: 2, salaryMin: '90000', salaryMax: '120000', listingUrl: 'https://example.com/job', timeline: [], equity: { type: 'rsu', quantity: '4000', vestingMonths: '48', cliffMonths: '12', cadence: 'quarterly', vestingStart: '2026-11-06', notes: 'Refresh grant possible' } };
   store.updatePath('crossroad', path);
   store.addTimelineEntry('crossroad', 'legacy', { date: '2026-11-06', title: 'Application sent', note: '**Applied**' });
   let entry = store.getPathById('legacy').timeline[0];
@@ -29,9 +31,18 @@ test('job fields and timeline CRUD survive reload', async () => {
   store.updatePath('crossroad', { id: 'legacy', status: 'Interviewing' });
   await store.init();
   assert.equal(store.getPathById('legacy').company, 'Acme');
+  assert.deepEqual(store.getPathById('legacy').equity, path.equity);
   assert.equal(store.getPathById('legacy').status, 'Interviewing');
   assert.equal(store.getPathById('legacy').timeline[0].title, 'Interview booked');
   assert.equal(store.getPathById('legacy').timeline[0].note, '*Interview*');
   store.deleteTimelineEntry('crossroad', 'legacy', entry.id);
   assert.deepEqual(store.getPathById('legacy').timeline, []);
+});
+
+test('new job options do not store a duplicate name', async () => {
+  store.addPath('crossroad', { company: 'Acme', role: 'Engineer', baseSalary: null });
+  const created = store.getCrossroadById('crossroad').paths[0];
+  assert.equal(created.company, 'Acme');
+  assert.equal(created.role, 'Engineer');
+  assert.equal(Object.hasOwn(created, 'name'), false);
 });

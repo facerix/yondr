@@ -1,4 +1,5 @@
 /* web component for a crossroad summary */
+import { formatJobOptionName } from '../src/jobPathModel.js';
 
 const CSS = `
 :host {
@@ -229,7 +230,7 @@ class CrossroadSummary extends HTMLElement {
     this.#container.querySelector('.startDate').textContent = formatDate(this.#data.startDate);
     this.#container.querySelector('.endDate').textContent = this.#data.endDate ? formatDate(this.#data.endDate) : 'Present';
 
-    const pathSummary = this.#data.paths?.length > 0 ? this.#data.paths.map(path => path.name).join(', ') : 'None yet';
+    const pathSummary = this.#data.paths?.length > 0 ? this.#data.paths.map(path => formatJobOptionName(path)).join(', ') : 'None yet';
     this.#container.querySelector('.path-summary-list').innerText = pathSummary;
   }
 }

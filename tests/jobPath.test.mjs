@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { hasConcreteSalary, validateJobPath, sortTimeline, getComparableMetrics, selectedSalary, comparisonValues } from '../dist/src/jobPathModel.js';
+import { hasConcreteSalary, validateJobPath, sortTimeline, getComparableMetrics, selectedSalary, comparisonValues, formatEquityGrant, formatEquityTerms, formatEquitySummary, formatJobOptionName } from '../dist/src/jobPathModel.js';
 import { renderNoteMarkdown } from '../dist/src/noteMarkdown.js';
 import { compareJob } from '../dist/src/jobComparison.js';
 
@@ -17,6 +17,36 @@ test('salary bounds and links are validated', () => {
   assert.throws(() => validateJobPath({ listingUrl: 'javascript:alert(1)' }), /URL/i);
   assert.throws(() => validateJobPath({ timeline: [{ id: 'a', date: '2026-11-06', note: 'Hi', url: 'file:///tmp/x' }] }), /URL/i);
   assert.doesNotThrow(() => validateJobPath({ salaryMin: '90000', salaryMax: '120000', listingUrl: 'https://example.com/job' }));
+});
+
+test('job option labels use company and role with a legacy name fallback', () => {
+  assert.equal(formatJobOptionName({ company: ' Acme ', role: ' Engineer ', name: 'Old label' }), 'Acme · Engineer');
+  assert.equal(formatJobOptionName({ company: 'Acme', role: '' }), 'Acme');
+  assert.equal(formatJobOptionName({ name: 'Old label' }), 'Old label');
+  assert.throws(() => validateJobPath({ company: '', role: 'Engineer' }), /company/i);
+  assert.throws(() => validateJobPath({ company: 'Acme', role: '' }), /role/i);
+  assert.doesNotThrow(() => validateJobPath({ company: 'Acme', role: 'Engineer' }));
+});
+
+test('equity terms are validated without adding unvested grants to cash compensation', () => {
+  const equity = { type: 'options', quantity: '10000', vestingMonths: '48', cliffMonths: '12', cadence: 'monthly', strikePrice: '2.50', vestingStart: '2026-11-06', notes: 'Early exercise available' };
+  const path = { baseSalary: '100000', bonuses: '5000', equity };
+  assert.doesNotThrow(() => validateJobPath(path));
+  assert.deepEqual(getComparableMetrics(path), { compensation: 105000, bottomLine: 105000 });
+  assert.equal(formatEquityGrant(equity), '10,000 options');
+  assert.match(formatEquityTerms(equity), /^4 years vesting · 1-year cliff · monthly/);
+  assert.match(formatEquitySummary(equity), /10,000 options/);
+  assert.match(formatEquitySummary(equity), /4 years/);
+  assert.match(formatEquitySummary(equity), /1-year cliff/);
+  assert.match(formatEquitySummary(equity), /\$2\.50 strike/);
+  assert.match(formatEquitySummary({ ...equity, strikeCurrency: 'EUR' }), /€2\.50 strike/);
+  assert.match(formatEquitySummary({ type: 'rsu', quantity: '4000', vestingMonths: '36', cliffMonths: '0', cadence: 'quarterly' }), /4,000 RSUs.*3 years.*quarterly/);
+  assert.equal(formatEquitySummary(null), '');
+  assert.throws(() => validateJobPath({ equity: { ...equity, cliffMonths: '49' } }), /cliff/i);
+  assert.throws(() => validateJobPath({ equity: { ...equity, quantity: '-1' } }), /quantity/i);
+  assert.throws(() => validateJobPath({ equity: { ...equity, type: 'rsu', strikePrice: '2.50' } }), /strike/i);
+  assert.throws(() => validateJobPath({ equity: { ...equity, strikeCurrency: 'dollars' } }), /currency/i);
+  assert.throws(() => validateJobPath({ equity: { ...equity, vestingStart: 'not a date' } }), /date/i);
 });
 
 test('timeline sorts newest first without losing same-day order', () => {

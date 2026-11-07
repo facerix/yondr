@@ -1,5 +1,6 @@
 /* web component for managing the user's current path */
 import DataStore from '/src/DataStore.js';
+import { formatJobOptionName } from '/src/jobPathModel.js';
 import '/components/ConfirmationModal.js';
 import '/components/EditOptionModal.js';
 
@@ -278,10 +279,10 @@ class CurrentPath extends HTMLElement {
     addBtn.classList.add('u-hidden');
     noCurrentPath.classList.add('u-hidden');
     editActions.classList.remove('u-hidden');
-    const { name, currency, yearNetIncome } = this.#data;
+    const { currency, yearNetIncome } = this.#data;
     
     const bottomLine = new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(yearNetIncome);
-    pathNameElement.textContent = name;
+    pathNameElement.textContent = formatJobOptionName(this.#data);
     bottomLineElement.textContent = `Bottom Line: ${ bottomLine }`;
   }
 }

@@ -3,6 +3,7 @@ import '../components/EditOptionModal.js';
 import '../components/JobPath.js';
 import '../components/UserSettingsModal.js';
 import { CurrencyClient } from '../src/currencyClient.js';
+import { compareJob } from '../src/jobComparison.js';
   
 const whenLoaded = Promise.all(
   [
@@ -37,16 +38,19 @@ whenLoaded.then(() => {
   });
 
   // Save user settings
-  userSettingsModal.addEventListener("settings-save", async (evt) => {
+  userSettingsModal.addEventListener("settings-save", (evt) => {
     const settings = (evt as CustomEvent).detail.settings;
     DataStore.updateUserSettings(settings);
-    // Re-render paths to update with new fixed expenses
-    await render();
   });
 
   // DOM hooks
   const pathContainer = document.querySelector("#path-container");
   const crossroadName = document.querySelector("#crossroad-name");
+  const rangeMode = document.querySelector<HTMLSelectElement>("#range-mode");
+  const livingMode = document.querySelector<HTMLSelectElement>("#living-mode");
+  const comparisonHint = document.querySelector("#comparison-hint");
+  rangeMode.addEventListener("change", () => render());
+  livingMode.addEventListener("change", () => render());
   const startDate = document.querySelector("#start-date");
   const endDate = document.querySelector("#end-date");
 
@@ -63,53 +67,41 @@ whenLoaded.then(() => {
     editOptionModal.open();
   });
 
-  // Calculate max compensation and max bottom line across all paths
-  async function calculateMaxValues(allPaths) {
+  pathContainer.addEventListener('timeline-add', evt => {
+    DataStore.addTimelineEntry(crossroadId, (evt as CustomEvent).detail.pathId, (evt as CustomEvent).detail.entry);
+    render();
+  });
+  pathContainer.addEventListener('timeline-update', evt => {
+    DataStore.updateTimelineEntry(crossroadId, (evt as CustomEvent).detail.pathId, (evt as CustomEvent).detail.entry);
+    render();
+  });
+  pathContainer.addEventListener('timeline-delete', evt => {
+    DataStore.deleteTimelineEntry(crossroadId, (evt as CustomEvent).detail.pathId, (evt as CustomEvent).detail.entryId);
+    render();
+  });
+
+  async function calculateComparisons(allPaths) {
+    const settings = DataStore.getUserSettings();
     const currencyClient = new CurrencyClient();
-    const userSettings = DataStore.getUserSettings();
-    const fixedExpenses = parseFloat(userSettings.fixedExpenses) || 0;
-    const fixedExpensesCurrency = userSettings.fixedExpensesCurrency || "USD";
-    
-    // Calculate all compensations (baseSalary + bonuses)
-    const allCompensations = allPaths.map(p => {
-      const bs = parseFloat(p.baseSalary) || 0;
-      const bn = parseFloat(p.bonuses) || 0;
-      return bs + bn;
-    });
-    const maxCompensation = Math.max(...allCompensations, 0);
-    
-    // Calculate all bottom lines (requires async currency conversion)
-    const allBottomLines = await Promise.all(allPaths.map(async (p) => {
-      const yn = parseFloat(p.yearNetIncome) || 0;
-      if (yn > 0) {
-        return yn;
-      }
-      // Need to convert fixed expenses for each path's currency
-      const pathCurrency = p.currency || "USD";
-      let pathConvertedExpenses = fixedExpenses;
-      if (fixedExpensesCurrency !== pathCurrency && fixedExpenses > 0) {
-        try {
-          const exchangeRate = await currencyClient.getExchangeRate(fixedExpensesCurrency, pathCurrency);
-          pathConvertedExpenses = fixedExpenses * exchangeRate;
-        } catch (error) {
-          console.error(`Error converting fixed expenses for path ${p.name}:`, error);
-          pathConvertedExpenses = fixedExpenses;
-        }
-      }
-      const pathCompensation = (parseFloat(p.baseSalary) || 0) + (parseFloat(p.bonuses) || 0);
-      return Math.max(0, pathCompensation - pathConvertedExpenses);
+    const comparisons = await Promise.all(allPaths.map(path => compareJob(path, settings, {
+      rangeMode: rangeMode.value, livingMode: livingMode.value,
+    }, currencyClient)));
+    await Promise.all(comparisons.map(async (item, index) => {
+      if (!item) return;
+      const currency = allPaths[index].currency || 'USD';
+      const rate = currency === 'USD' ? 1 : await currencyClient.getExchangeRate(currency, 'USD');
+      item.referenceCompensation = item.compensation * rate;
+      item.referenceBottomLine = item.bottomLine == null ? null : item.bottomLine * rate;
     }));
-    const maxBottomLine = Math.max(...allBottomLines, 0);
-    
-    // Find the path ID(s) with the best bottom line
+    const maxCompensation = Math.max(0, ...comparisons.map(item => item?.referenceCompensation ?? 0));
+    const maxBottomLine = Math.max(0, ...comparisons.map(item => item?.referenceBottomLine ?? 0));
     const bestBottomLinePaths = new Set();
-    allBottomLines.forEach((bottomLine, index) => {
-      if (bottomLine === maxBottomLine && maxBottomLine > 0) {
+    comparisons.forEach((item, index) => {
+      if (item?.referenceBottomLine != null && item.referenceBottomLine === maxBottomLine && maxBottomLine > 0) {
         bestBottomLinePaths.add(allPaths[index].id);
       }
     });
-    
-    return { maxCompensation, maxBottomLine, bestBottomLinePaths };
+    return { comparisons: new Map(allPaths.map((path, index) => [path.id, comparisons[index]])), maxCompensation, maxBottomLine, bestBottomLinePaths };
   }
 
   const render = async () => {
@@ -128,11 +120,16 @@ whenLoaded.then(() => {
     const allPaths = currentPath ? [currentPath, ...crossroad.paths] : crossroad.paths;
     
     // Calculate max values once for all paths
-    const { maxCompensation, maxBottomLine, bestBottomLinePaths } = await calculateMaxValues(allPaths);
+    const { comparisons, maxCompensation, maxBottomLine, bestBottomLinePaths } = await calculateComparisons(allPaths);
+    const settings = DataStore.getUserSettings();
+    comparisonHint.textContent = livingMode.value === 'commute'
+      ? `Using current living costs${settings.currentLocation ? ` in ${settings.currentLocation}` : ''}. ${settings.currentLocationCostOfLivingSpend == null ? 'Set current living costs in settings to see bottom lines.' : ''}`
+      : 'Using each job location’s estimated living costs. Missing estimates show no bottom line.';
     
     if (currentPath) {
       const currentPathElement = document.createElement("job-path");
       // Set max values before pathData to avoid rendering with incorrect defaults
+      currentPathElement.comparison = comparisons.get(currentPath.id);
       currentPathElement.maxCompensation = maxCompensation;
       currentPathElement.maxBottomLine = maxBottomLine;
       currentPathElement.pathData = currentPath;
@@ -142,17 +139,42 @@ whenLoaded.then(() => {
       pathContainer.append(currentPathElement);
     }
     
-    // Show all explicitly added paths
+    // Group paths by place while preserving the first-seen order.
+    const groups = new Map();
     crossroad.paths.forEach(path => {
-      const pathElement = document.createElement("job-path");
-      // Set max values before pathData to avoid rendering with incorrect defaults
-      pathElement.maxCompensation = maxCompensation;
-      pathElement.maxBottomLine = maxBottomLine;
-      pathElement.pathData = path;
-      // Check if this path is the current path by comparing IDs
-      pathElement.isCurrent = currentPath && path.id === currentPath.id;
-      pathElement.hasBestBottomLine = bestBottomLinePaths.has(path.id);
-      pathContainer.append(pathElement);
+      const key = (path.location || '').trim().toLocaleLowerCase();
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(path);
+    });
+    groups.forEach(paths => {
+      const section = document.createElement('section');
+      section.className = 'location-group';
+      const heading = document.createElement('h3');
+      heading.textContent = paths[0].location || 'Location not specified';
+      const cards = document.createElement('div');
+      cards.className = 'location-cards';
+      section.append(heading, cards);
+      pathContainer.append(section);
+      paths.forEach(path => {
+        const pathElement = document.createElement("job-path");
+        pathElement.comparison = comparisons.get(path.id);
+        pathElement.maxCompensation = maxCompensation;
+        pathElement.maxBottomLine = maxBottomLine;
+        pathElement.pathData = path;
+        pathElement.isCurrent = currentPath && path.id === currentPath.id;
+        pathElement.hasBestBottomLine = bestBottomLinePaths.has(path.id);
+        cards.append(pathElement);
+      });
+      const addHere = document.createElement('button');
+      addHere.type = 'button';
+      addHere.className = 'btn add-here';
+      addHere.textContent = 'Add another job here';
+      addHere.addEventListener('click', () => {
+        editOptionModal.mode = 'add';
+        editOptionModal.prefillLocation(paths[0]);
+        editOptionModal.open();
+      });
+      section.append(addHere);
     });
   }
 
@@ -178,9 +200,6 @@ whenLoaded.then(() => {
     switch ((evt as CustomEvent).detail.changeType) {
       case "init":
         // load crossroads and their paths
-        await render();
-        break;
-      case "add-path":
         await render();
         break;
       case "update-user-settings":

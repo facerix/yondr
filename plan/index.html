@@ -62,14 +62,16 @@
 
     #path-container {
       display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 1em;
-
-      job-path {
-        flex: 1 1 250px;
-      }
     }
+    .location-group { width: 100%; }
+    .location-group h3 { color: #7c0028; margin: 0 0 0.5em; }
+    .location-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1em; }
+    .add-here { margin-top: 0.75em; }
+    .comparison-controls { display: flex; flex-wrap: wrap; gap: 1em; align-items: center; justify-content: center; }
+    .comparison-controls label { display: flex; gap: 0.5em; align-items: center; }
+    .comparison-hint { text-align: center; margin: 0; font-size: 0.9em; }
 
     #btnAdd {
       border: 1px dashed rgb(244, 12, 64);
@@ -127,6 +129,11 @@
     <div class="timespan">
       <span id="start-date"></span>&nbsp;&ndash;&nbsp;<span id="end-date"></span>
     </div>
+    <div class="comparison-controls">
+      <label>Salary ranges <select id="range-mode"><option value="off">Off</option><option value="median">Midpoint</option><option value="max">Maximum</option></select></label>
+      <label>Living costs <select id="living-mode"><option value="relocate">Relocate</option><option value="commute">Commute</option></select></label>
+    </div>
+    <p class="comparison-hint" id="comparison-hint"></p>
     <div id="path-container"></div>
     <p id="no-options-message">You haven't added any options to this crossroad yet.<br/>Add one to get started!</p>
     <button id="btnAdd" class="btn">

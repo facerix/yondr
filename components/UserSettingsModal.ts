@@ -403,6 +403,7 @@ class UserSettingsModal extends HTMLElement {
     // Get values from location input group
     const currentLocationValue = this.#currentLocationGroup?.location || null;
     const currentLocationCostOfLivingValue = this.#currentLocationGroup?.costOfLiving || null;
+    const currentLocationCurrencyValue = this.#currentLocationGroup?.currency || fixedExpensesCurrencyValue;
     const currentLocationCostOfLivingSpendValue = formData.get("currentLocationCostOfLivingSpend") || null;
     
     const settings = {
@@ -411,6 +412,7 @@ class UserSettingsModal extends HTMLElement {
       citizenship: citizenshipValue || null,
       taxFilingStatus: taxFilingStatusValue,
       currentLocation: currentLocationValue || null,
+      currentLocationCurrency: currentLocationCurrencyValue,
       currentLocationCostOfLiving: currentLocationCostOfLivingValue || null,
       currentLocationCostOfLivingSpend: currentLocationCostOfLivingSpendValue ? parseFloat(String(currentLocationCostOfLivingSpendValue)) : null
     };
@@ -439,7 +441,7 @@ class UserSettingsModal extends HTMLElement {
       if (this.#currentLocationGroup) {
         this.#currentLocationGroup.location = settings.currentLocation || "";
         this.#currentLocationGroup.costOfLiving = settings.currentLocationCostOfLiving || "";
-        this.#currentLocationGroup.currency = settings.fixedExpensesCurrency || "USD";
+        this.#currentLocationGroup.currency = settings.currentLocationCurrency || settings.fixedExpensesCurrency || "USD";
       }
       
       currentLocationCostOfLivingSpendInput.value = settings.currentLocationCostOfLivingSpend || 0;

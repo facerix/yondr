@@ -1,6 +1,7 @@
 // singleton class to manage the user's data
 
 import { v4WithTimestamp } from "./uuid.js";
+import { normalizePath, validateJobPath } from "./jobPathModel.js";
 
 const normalizeCrossroad = (crossroad) => {
   const normalizedCrossroad = {
@@ -13,6 +14,7 @@ const normalizeCrossroad = (crossroad) => {
     if (!path.id) {
       normalizedCrossroad.paths[pathIndex].id = v4WithTimestamp();
     }
+    normalizedCrossroad.paths[pathIndex] = normalizePath(normalizedCrossroad.paths[pathIndex]);
   });
   return normalizedCrossroad;
 }
@@ -99,6 +101,7 @@ class DataStore extends EventTarget {
       citizenship: null,
       taxFilingStatus: "single",
       currentLocation: null,
+      currentLocationCurrency: "USD",
       currentLocationCostOfLiving: null,
       currentLocationCostOfLivingSpend: null // e.g., rent, food
     };
@@ -186,10 +189,10 @@ class DataStore extends EventTarget {
   addPath(crossroadId, path) {
     const crossroad = this.getCrossroadById(crossroadId);
     if (crossroad) {
-      path.id = v4WithTimestamp();
-      crossroad.paths.unshift(path);
+      const newPath = normalizePath({ ...validateJobPath(path), id: v4WithTimestamp() });
+      crossroad.paths.unshift(newPath);
       this.#reindex();
-      this.#emitChangeEvent("add-path", { crossroadId, path });
+      this.#emitChangeEvent("add-path", { crossroadId, path: newPath });
     }
   }
 
@@ -198,9 +201,10 @@ class DataStore extends EventTarget {
     if (crossroad) {
       const pathIndex = crossroad.paths.findIndex(p => p.id === path.id);
       if (pathIndex > -1) {
-        crossroad.paths[pathIndex] = path;
+        const current = crossroad.paths[pathIndex];
+        crossroad.paths[pathIndex] = normalizePath(validateJobPath({ ...current, ...path, timeline: path.timeline ?? current.timeline }));
         this.#reindex();
-        this.#emitChangeEvent("update-path", { crossroadId, path });
+        this.#emitChangeEvent("update-path", { crossroadId, path: crossroad.paths[pathIndex] });
       }
     }
   }
@@ -212,6 +216,29 @@ class DataStore extends EventTarget {
       this.#reindex();
       this.#emitChangeEvent("delete-path", { crossroadId, pathId });
     }
+  }
+
+  #getRequiredPath(crossroadId, pathId) {
+    const path = this.getCrossroadById(crossroadId)?.paths.find(item => item.id === pathId);
+    if (!path) throw new Error(`Path ${pathId} was not found in crossroad ${crossroadId}.`);
+    return path;
+  }
+
+  addTimelineEntry(crossroadId, pathId, entry) {
+    const path = this.#getRequiredPath(crossroadId, pathId);
+    this.updatePath(crossroadId, { ...path, timeline: [...path.timeline, { ...entry, id: v4WithTimestamp() }] });
+  }
+
+  updateTimelineEntry(crossroadId, pathId, entry) {
+    const path = this.#getRequiredPath(crossroadId, pathId);
+    if (!path.timeline.some(item => item.id === entry.id)) throw new Error(`Timeline entry ${entry.id} was not found.`);
+    this.updatePath(crossroadId, { ...path, timeline: path.timeline.map(item => item.id === entry.id ? entry : item) });
+  }
+
+  deleteTimelineEntry(crossroadId, pathId, entryId) {
+    const path = this.#getRequiredPath(crossroadId, pathId);
+    if (!path.timeline.some(item => item.id === entryId)) throw new Error(`Timeline entry ${entryId} was not found.`);
+    this.updatePath(crossroadId, { ...path, timeline: path.timeline.filter(item => item.id !== entryId) });
   }
 
   getUserSettings() {

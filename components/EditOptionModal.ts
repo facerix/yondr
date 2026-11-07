@@ -5,6 +5,7 @@ import { calculateUSIncomeTax2025 } from "../src/utils.js";
 import DataStore from "../src/DataStore.js";
 import { CurrencyClient } from "../src/currencyClient.js";
 import { lookupCostOfLiving } from "../src/costOfLivingData.js";
+import { validateJobPath } from "../src/jobPathModel.js";
 import "../components/LocationInputGroup.js";
 import "../components/PopoverInfo.js";
 
@@ -128,6 +129,7 @@ const CSS = `
   }
 
   input[type="text"],
+  input[type="url"],
   input[type="number"],
   select {
     padding: 0.75em;
@@ -178,6 +180,9 @@ const CSS = `
 .flex-1 {
   flex: 1;
 }
+
+[hidden] { display: none !important; }
+.form-error { color: #a00020; margin: 0.5em 0; }
 
 .modal-footer {
   display: flex;
@@ -249,18 +254,39 @@ const TEMPLATE = `
         </div>
       </div>
 
+      <div class="form-group-row">
+        <div class="form-group flex-1"><label for="company">Company</label><input type="text" id="company" name="company" /></div>
+        <div class="form-group flex-1"><label for="role">Role</label><input type="text" id="role" name="role" /></div>
+      </div>
+      <div class="form-group-row">
+        <div class="form-group flex-1"><label for="listingUrl">Job listing URL</label><input type="url" id="listingUrl" name="listingUrl" placeholder="https://…" /></div>
+        <div class="form-group flex-1"><label for="status">Application status</label><select id="status" name="status">
+          <option>Interested</option><option>Applied</option><option>Interviewing</option><option>Offer</option><option>Accepted</option><option>Rejected</option><option>Withdrawn</option>
+        </select></div>
+      </div>
+      <div class="form-group-row">
+        <div class="form-group flex-1"><label for="workPolicy">Work policy</label><select id="workPolicy" name="workPolicy">
+          <option value="">Not specified</option><option value="in-office">In office</option><option value="hybrid">Hybrid</option><option value="remote">Remote</option>
+        </select></div>
+        <div class="form-group flex-1" id="officeDaysGroup" hidden><label for="officeDays">Office days per week</label><input type="number" id="officeDays" name="officeDays" min="0" max="5" step="1" /></div>
+      </div>
+
       <location-input-group id="locationGroup"></location-input-group>
 
       <div class="form-group-row">
         <div class="form-group flex-1">
-          <label for="baseSalary">Base salary</label>
-          <input type="number" step="0.01" min="0" id="baseSalary" name="baseSalary" autocomplete="off" required />
+          <label for="baseSalary">Concrete base salary (if known)</label>
+          <input type="number" step="0.01" min="0" id="baseSalary" name="baseSalary" autocomplete="off" />
         </div>
 
         <div class="form-group flex-1">
           <label for="bonuses">Total Bonuses (not equity)</label>
           <input type="number" step="0.01" min="0" id="bonuses" name="bonuses" autocomplete="off" value="0" />
         </div>
+      </div>
+      <div class="form-group-row">
+        <div class="form-group flex-1"><label for="salaryMin">Salary range minimum</label><input type="number" step="0.01" min="0" id="salaryMin" name="salaryMin" /></div>
+        <div class="form-group flex-1"><label for="salaryMax">Salary range maximum</label><input type="number" step="0.01" min="0" id="salaryMax" name="salaryMax" /></div>
       </div>
 
       <div class="form-group-row">
@@ -311,6 +337,7 @@ const TEMPLATE = `
       </div> -->
 
       <div class="modal-footer">
+        <p class="form-error" role="alert"></p>
         <button type="button" class="btn btn-cancel">Cancel</button>
         <button type="submit" class="btn btn-save">Save</button>
       </div>
@@ -370,6 +397,7 @@ class EditOptionModal extends HTMLElement {
     // Attach change handler to fields that affect taxable income
     const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
     const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
+    this.shadowRoot.querySelector('#workPolicy').addEventListener('change', () => this.#updateOfficeDays());
 
     baseSalaryInput.addEventListener("input", this.#boundUpdateTaxableIncome);
     bonusesInput.addEventListener("input", this.#boundUpdateTaxableIncome);
@@ -447,6 +475,12 @@ class EditOptionModal extends HTMLElement {
     const yearNetIncomeInput = this.shadowRoot.querySelector<HTMLInputElement>("#yearNetIncome");
     const yearNetIncomeDisplay = this.shadowRoot.querySelector("#yearNetIncomeDisplay");
     const estimatedCostOfLivingDisplay = this.shadowRoot.querySelector("#estimatedCostOfLivingDisplay");
+    if (baseSalaryInput.value === '') {
+      for (const field of [taxableIncomeInput, usTaxInput, yearNetIncomeInput]) field.value = '';
+      for (const field of [taxableIncomeDisplay, usTaxDisplay, yearNetIncomeDisplay]) field.textContent = '—';
+      await this.#updateEstimatedCostOfLiving(estimatedCostOfLivingDisplay);
+      return;
+    }
     
     // Calculate and update estimated cost of living (async) - get the value for subtraction
     const estimatedCostOfLivingValue = await this.#updateEstimatedCostOfLiving(estimatedCostOfLivingDisplay);
@@ -578,10 +612,10 @@ class EditOptionModal extends HTMLElement {
     if (currentLocationCostOfLivingSpend > 0 && currentLocationCostOfLivingIndex > 0 && optionCostOfLivingIndex > 0) {
       // Get current location currency by looking up the location
       const currentLocation = userSettings.currentLocation || null;
-      let currentLocationCurrency = "USD"; // Default fallback
+      let currentLocationCurrency = userSettings.currentLocationCurrency || "USD";
       if (currentLocation) {
         const locationData = lookupCostOfLiving(currentLocation);
-        if (locationData && locationData.currency) {
+        if (!userSettings.currentLocationCurrency && locationData && locationData.currency) {
           currentLocationCurrency = locationData.currency;
         }
       }
@@ -644,10 +678,10 @@ class EditOptionModal extends HTMLElement {
     if (currentLocationCostOfLivingSpend > 0 && currentLocationCostOfLivingIndex > 0 && optionCostOfLivingIndex > 0) {
       // Get current location currency by looking up the location
       const currentLocation = userSettings.currentLocation || null;
-      let currentLocationCurrency = "USD"; // Default fallback
+      let currentLocationCurrency = userSettings.currentLocationCurrency || "USD";
       if (currentLocation) {
         const locationData = lookupCostOfLiving(currentLocation);
-        if (locationData && locationData.currency) {
+        if (!userSettings.currentLocationCurrency && locationData && locationData.currency) {
           currentLocationCurrency = locationData.currency;
         }
       }
@@ -672,16 +706,32 @@ class EditOptionModal extends HTMLElement {
     
     const data: { id?: string; [key: string]: unknown } = {
       name: nameValue,
+      company: String(formData.get('company') || '').trim(),
+      role: String(formData.get('role') || '').trim(),
+      listingUrl: String(formData.get('listingUrl') || '').trim(),
+      status: formData.get('status') || 'Interested',
+      workPolicy: formData.get('workPolicy') || '',
+      officeDays: formData.get('workPolicy') === 'hybrid' ? formData.get('officeDays') : null,
       location: locationValue,
       currency: currencyValue,
-      baseSalary: baseSalaryValue,
+      baseSalary: baseSalaryValue === '' ? null : baseSalaryValue,
+      salaryMin: formData.get('salaryMin') || null,
+      salaryMax: formData.get('salaryMax') || null,
       bonuses: bonusesValue,
       costOfLiving: costOfLivingValue || null,
       costOfLivingSpend: costOfLivingSpendValue,
-      taxableIncome: taxableIncomeValue,
-      usTax: usTaxValue,
-      yearNetIncome: yearNetIncomeValue,
+      taxableIncome: baseSalaryValue === '' ? null : taxableIncomeValue,
+      usTax: baseSalaryValue === '' ? null : usTaxValue,
+      yearNetIncome: baseSalaryValue === '' ? null : yearNetIncomeValue,
+      timeline: this.#mode === 'edit' ? (this.#data?.timeline || []) : [],
     };
+
+    try {
+      validateJobPath(data);
+    } catch (error) {
+      this.shadowRoot.querySelector('.form-error').textContent = (error as Error).message;
+      return;
+    }
 
     // Include id only in edit mode
     if (this.#mode === "edit" && this.#data) {
@@ -718,6 +768,13 @@ class EditOptionModal extends HTMLElement {
     return this.#mode;
   }
 
+  prefillLocation(path) {
+    this.#locationInputGroup.location = path.location || '';
+    this.#locationInputGroup.costOfLiving = path.costOfLiving || '';
+    this.#locationInputGroup.currency = path.currency || 'USD';
+    this.#updateTaxableIncome();
+  }
+
   #populateForm() {
     const nameInput = this.shadowRoot.querySelector<HTMLInputElement>("#optionName");
     const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
@@ -731,6 +788,14 @@ class EditOptionModal extends HTMLElement {
     const yearNetIncomeDisplay = this.shadowRoot.querySelector("#yearNetIncomeDisplay");
     const fixedExpensesDisplay = this.shadowRoot.querySelector<HTMLInputElement>("#fixedExpenses");
     const estimatedCostOfLivingDisplay = this.shadowRoot.querySelector("#estimatedCostOfLivingDisplay");
+    this.shadowRoot.querySelector('.form-error').textContent = '';
+    for (const field of ['company', 'role', 'listingUrl', 'salaryMin', 'salaryMax']) {
+      this.shadowRoot.querySelector<HTMLInputElement>(`#${field}`).value = this.#mode === 'edit' ? (this.#data?.[field] ?? '') : '';
+    }
+    this.shadowRoot.querySelector<HTMLSelectElement>('#status').value = this.#mode === 'edit' ? (this.#data?.status || 'Interested') : 'Interested';
+    this.shadowRoot.querySelector<HTMLSelectElement>('#workPolicy').value = this.#mode === 'edit' ? (this.#data?.workPolicy || '') : '';
+    this.shadowRoot.querySelector<HTMLInputElement>('#officeDays').value = this.#mode === 'edit' ? (this.#data?.officeDays ?? '') : '';
+    this.#updateOfficeDays();
 
     // Get fixed expenses from user settings and format as currency
     const userSettings = DataStore.getUserSettings();
@@ -746,7 +811,7 @@ class EditOptionModal extends HTMLElement {
     if (this.#mode === "add") {
       // Add mode defaults
       nameInput.value = "";
-      baseSalaryInput.value = "0";
+      baseSalaryInput.value = "";
       bonusesInput.value = "0";
       taxableIncomeInput.value = "0";
       if (taxableIncomeDisplay) {
@@ -786,7 +851,7 @@ class EditOptionModal extends HTMLElement {
     } else if (this.#data) {
       // Edit mode - populate from data
       nameInput.value = this.#data.name || "";
-      baseSalaryInput.value = this.#data.baseSalary || 0;
+      baseSalaryInput.value = this.#data.baseSalary ?? '';
       bonusesInput.value = this.#data.bonuses || 0;
       const taxableIncomeValue = parseFloat(this.#data.taxableIncome) || 0;
       taxableIncomeInput.value = taxableIncomeValue.toFixed(2);
@@ -842,6 +907,13 @@ class EditOptionModal extends HTMLElement {
       titleElement.textContent =
         this.#mode === "add" ? "Add Option" : "Edit Option";
     }
+  }
+
+  #updateOfficeDays() {
+    const hybrid = this.shadowRoot.querySelector<HTMLSelectElement>('#workPolicy').value === 'hybrid';
+    const group = this.shadowRoot.querySelector<HTMLElement>('#officeDaysGroup');
+    group.hidden = !hybrid;
+    group.querySelector('input').required = hybrid;
   }
 
   open() {

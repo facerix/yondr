@@ -3,6 +3,7 @@
 // API documentation: https://www.census.gov/data/developers/guidance/api-user-guide.html
 
 export class CensusClient {
+  baseUrl: string;
   cachedData = {};
   localStorageKey = 'censusCostOfLiving';
   lastUpdated = null;
@@ -40,7 +41,7 @@ export class CensusClient {
     const cacheDays = 365;
     const lastUpdatedDate = new Date(this.lastUpdated);
     const today = new Date();
-    const daysDiff = Math.floor((today - lastUpdatedDate) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.floor((today.getTime() - lastUpdatedDate.getTime()) / (1000 * 60 * 60 * 24));
     return daysDiff >= cacheDays;
   }
 

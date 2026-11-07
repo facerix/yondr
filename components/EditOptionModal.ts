@@ -368,8 +368,8 @@ class EditOptionModal extends HTMLElement {
     form.addEventListener("submit", this.#boundHandleSubmit);
 
     // Attach change handler to fields that affect taxable income
-    const baseSalaryInput = this.shadowRoot.querySelector("#baseSalary");
-    const bonusesInput = this.shadowRoot.querySelector("#bonuses");
+    const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
+    const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
 
     baseSalaryInput.addEventListener("input", this.#boundUpdateTaxableIncome);
     bonusesInput.addEventListener("input", this.#boundUpdateTaxableIncome);
@@ -402,8 +402,8 @@ class EditOptionModal extends HTMLElement {
     const closeBtn = this.shadowRoot.querySelector(".close-btn");
     const cancelBtn = this.shadowRoot.querySelector(".btn-cancel");
     const form = this.shadowRoot.querySelector(".edit-form");
-    const baseSalaryInput = this.shadowRoot.querySelector("#baseSalary");
-    const bonusesInput = this.shadowRoot.querySelector("#bonuses");
+    const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
+    const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
 
     if (closeBtn) {
       closeBtn.removeEventListener("click", this.#boundHandleClose);
@@ -438,13 +438,13 @@ class EditOptionModal extends HTMLElement {
   }
 
   async #updateTaxableIncome() {
-    const baseSalaryInput = this.shadowRoot.querySelector("#baseSalary");
-    const bonusesInput = this.shadowRoot.querySelector("#bonuses");
-    const taxableIncomeInput = this.shadowRoot.querySelector("#taxableIncome");
+    const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
+    const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
+    const taxableIncomeInput = this.shadowRoot.querySelector<HTMLInputElement>("#taxableIncome");
     const taxableIncomeDisplay = this.shadowRoot.querySelector("#taxableIncomeDisplay");
-    const usTaxInput = this.shadowRoot.querySelector("#usTax");
+    const usTaxInput = this.shadowRoot.querySelector<HTMLInputElement>("#usTax");
     const usTaxDisplay = this.shadowRoot.querySelector("#usTaxDisplay");
-    const yearNetIncomeInput = this.shadowRoot.querySelector("#yearNetIncome");
+    const yearNetIncomeInput = this.shadowRoot.querySelector<HTMLInputElement>("#yearNetIncome");
     const yearNetIncomeDisplay = this.shadowRoot.querySelector("#yearNetIncomeDisplay");
     const estimatedCostOfLivingDisplay = this.shadowRoot.querySelector("#estimatedCostOfLivingDisplay");
     
@@ -670,7 +670,7 @@ class EditOptionModal extends HTMLElement {
       costOfLivingSpendValue = userSpendInJobCurrency * ratio;
     }
     
-    const data = {
+    const data: { id?: string; [key: string]: unknown } = {
       name: nameValue,
       location: locationValue,
       currency: currencyValue,
@@ -719,17 +719,17 @@ class EditOptionModal extends HTMLElement {
   }
 
   #populateForm() {
-    const nameInput = this.shadowRoot.querySelector("#optionName");
-    const baseSalaryInput = this.shadowRoot.querySelector("#baseSalary");
-    const bonusesInput = this.shadowRoot.querySelector("#bonuses");
-    const taxableIncomeInput = this.shadowRoot.querySelector("#taxableIncome");
+    const nameInput = this.shadowRoot.querySelector<HTMLInputElement>("#optionName");
+    const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
+    const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
+    const taxableIncomeInput = this.shadowRoot.querySelector<HTMLInputElement>("#taxableIncome");
     const taxableIncomeDisplay = this.shadowRoot.querySelector("#taxableIncomeDisplay");
-    const usTaxInput = this.shadowRoot.querySelector("#usTax");
+    const usTaxInput = this.shadowRoot.querySelector<HTMLInputElement>("#usTax");
     const usTaxDisplay = this.shadowRoot.querySelector("#usTaxDisplay");
     // const nonUsTaxInput = this.shadowRoot.querySelector("#nonUsTax");
-    const yearNetIncomeInput = this.shadowRoot.querySelector("#yearNetIncome");
+    const yearNetIncomeInput = this.shadowRoot.querySelector<HTMLInputElement>("#yearNetIncome");
     const yearNetIncomeDisplay = this.shadowRoot.querySelector("#yearNetIncomeDisplay");
-    const fixedExpensesDisplay = this.shadowRoot.querySelector("#fixedExpenses");
+    const fixedExpensesDisplay = this.shadowRoot.querySelector<HTMLInputElement>("#fixedExpenses");
     const estimatedCostOfLivingDisplay = this.shadowRoot.querySelector("#estimatedCostOfLivingDisplay");
 
     // Get fixed expenses from user settings and format as currency
@@ -746,9 +746,9 @@ class EditOptionModal extends HTMLElement {
     if (this.#mode === "add") {
       // Add mode defaults
       nameInput.value = "";
-      baseSalaryInput.value = 0;
-      bonusesInput.value = 0;
-      taxableIncomeInput.value = 0;
+      baseSalaryInput.value = "0";
+      bonusesInput.value = "0";
+      taxableIncomeInput.value = "0";
       if (taxableIncomeDisplay) {
         const defaultCurrency = userSettings.fixedExpensesCurrency || "USD";
         taxableIncomeDisplay.textContent = new Intl.NumberFormat(undefined, {
@@ -757,7 +757,7 @@ class EditOptionModal extends HTMLElement {
           maximumFractionDigits: 0
         }).format(0);
       }
-      usTaxInput.value = 0;
+      usTaxInput.value = "0";
       if (usTaxDisplay) {
         usTaxDisplay.textContent = new Intl.NumberFormat(undefined, {
           style: "currency",
@@ -766,7 +766,7 @@ class EditOptionModal extends HTMLElement {
         }).format(0);
       }
       // nonUsTaxInput.value = 0;
-      yearNetIncomeInput.value = 0;
+      yearNetIncomeInput.value = "0";
       if (yearNetIncomeDisplay) {
         const defaultCurrency = userSettings.fixedExpensesCurrency || "USD";
         yearNetIncomeDisplay.textContent = new Intl.NumberFormat(undefined, {
@@ -847,7 +847,7 @@ class EditOptionModal extends HTMLElement {
   open() {
     this.#isOpen = true;
     // Refresh fixed expenses from user settings when opening
-    const fixedExpensesDisplay = this.shadowRoot.querySelector("#fixedExpenses");
+    const fixedExpensesDisplay = this.shadowRoot.querySelector<HTMLInputElement>("#fixedExpenses");
     if (fixedExpensesDisplay) {
       const userSettings = DataStore.getUserSettings();
       const fixedExpenses = parseFloat(userSettings.fixedExpenses) || 0;
@@ -868,7 +868,7 @@ class EditOptionModal extends HTMLElement {
     overlay.classList.add("visible");
     // Focus the name input for better UX
     setTimeout(() => {
-      this.shadowRoot.querySelector("#optionName").focus();
+      this.shadowRoot.querySelector<HTMLInputElement>("#optionName").focus();
     }, 100);
   }
 
@@ -884,3 +884,9 @@ class EditOptionModal extends HTMLElement {
 }
 
 customElements.define("edit-option-modal", EditOptionModal);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "edit-option-modal": EditOptionModal;
+  }
+}

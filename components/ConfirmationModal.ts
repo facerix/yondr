@@ -232,7 +232,7 @@ class ConfirmationModal extends HTMLElement {
     this.shadowRoot.querySelector("#btnCancel").addEventListener("click", closeHandler);
 
     this.shadowRoot.querySelector("dialog form").addEventListener("submit", (evt) => {
-      if (evt.submitter.id === "btnOk") {
+      if ((evt as SubmitEvent).submitter?.id === "btnOk") {
         this.#emit("confirm");
       }
     });
@@ -248,7 +248,7 @@ class ConfirmationModal extends HTMLElement {
     // if we've already been attached to the document, 
     // replace the contents of each slot with the latest data
     if (this.#ready) {
-      this.shadowRoot.querySelector("#message").innerText = this.#message;
+      this.shadowRoot.querySelector("#message").textContent = this.#message;
     }
   }
 
@@ -263,3 +263,9 @@ class ConfirmationModal extends HTMLElement {
 }
 
 window.customElements.define('confirmation-modal', ConfirmationModal);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "confirmation-modal": ConfirmationModal;
+  }
+}

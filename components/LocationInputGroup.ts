@@ -181,7 +181,7 @@ class LocationInputGroup extends HTMLElement {
     // Initialize Census client for US cities
     this.#censusClient = new CensusClient();
 
-    const locationInput = this.shadowRoot.querySelector("#location");
+    const locationInput = this.shadowRoot.querySelector<HTMLInputElement>("#location");
     this.#boundHandleLocationChange = this.#handleLocationChange.bind(this);
 
     // Auto-fetch cost of living when location changes (with debounce)
@@ -194,7 +194,7 @@ class LocationInputGroup extends HTMLElement {
     });
 
     // Track manual entry for cost of living
-    const costOfLivingInput = this.shadowRoot.querySelector("#costOfLiving");
+    const costOfLivingInput = this.shadowRoot.querySelector<HTMLInputElement>("#costOfLiving");
     costOfLivingInput.addEventListener("input", () => {
       if (costOfLivingInput.value) {
         costOfLivingInput.dataset.manualEntry = "true";
@@ -208,7 +208,7 @@ class LocationInputGroup extends HTMLElement {
     costOfLivingInput.addEventListener("input", () => {
       this.#emitChange();
     });
-    const currencyInput = this.shadowRoot.querySelector("#currency");
+    const currencyInput = this.shadowRoot.querySelector<HTMLInputElement>("#currency");
     currencyInput.addEventListener("change", () => {
       this.#emitChange();
     });
@@ -222,8 +222,8 @@ class LocationInputGroup extends HTMLElement {
   }
 
   async #handleLocationChange() {
-    const locationInput = this.shadowRoot.querySelector("#location");
-    const costOfLivingInput = this.shadowRoot.querySelector("#costOfLiving");
+    const locationInput = this.shadowRoot.querySelector<HTMLInputElement>("#location");
+    const costOfLivingInput = this.shadowRoot.querySelector<HTMLInputElement>("#costOfLiving");
     const location = locationInput.value.trim();
 
     if (!location || this.#isFetchingCostOfLiving) {
@@ -289,7 +289,7 @@ class LocationInputGroup extends HTMLElement {
         
         // Auto-update currency field if we found a match and currency is available
         if (currency) {
-          const currencyInput = this.shadowRoot.querySelector("#currency");
+          const currencyInput = this.shadowRoot.querySelector<HTMLInputElement>("#currency");
           const supportedCurrencies = ["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF", "JPY", "SGD", "HKD", "DKK", "SEK", "NOK"];
           if (supportedCurrencies.includes(currency)) {
             currencyInput.value = currency;
@@ -320,9 +320,9 @@ class LocationInputGroup extends HTMLElement {
   }
 
   #emitChange() {
-    const locationInput = this.shadowRoot.querySelector("#location");
-    const costOfLivingInput = this.shadowRoot.querySelector("#costOfLiving");
-    const currencyInput = this.shadowRoot.querySelector("#currency");
+    const locationInput = this.shadowRoot.querySelector<HTMLInputElement>("#location");
+    const costOfLivingInput = this.shadowRoot.querySelector<HTMLInputElement>("#costOfLiving");
+    const currencyInput = this.shadowRoot.querySelector<HTMLInputElement>("#currency");
 
     this.dispatchEvent(new CustomEvent("location-change", {
       detail: {
@@ -336,9 +336,9 @@ class LocationInputGroup extends HTMLElement {
   }
 
   #populateFields() {
-    const locationInput = this.shadowRoot.querySelector("#location");
-    const costOfLivingInput = this.shadowRoot.querySelector("#costOfLiving");
-    const currencyInput = this.shadowRoot.querySelector("#currency");
+    const locationInput = this.shadowRoot.querySelector<HTMLInputElement>("#location");
+    const costOfLivingInput = this.shadowRoot.querySelector<HTMLInputElement>("#costOfLiving");
+    const currencyInput = this.shadowRoot.querySelector<HTMLInputElement>("#currency");
 
     if (locationInput && this.#location !== null) {
       locationInput.value = this.#location;
@@ -355,17 +355,17 @@ class LocationInputGroup extends HTMLElement {
 
   // Getters for form data
   get location() {
-    const locationInput = this.shadowRoot?.querySelector("#location");
+    const locationInput = this.shadowRoot?.querySelector<HTMLInputElement>("#location");
     return locationInput ? locationInput.value : this.#location;
   }
 
   get costOfLiving() {
-    const costOfLivingInput = this.shadowRoot?.querySelector("#costOfLiving");
+    const costOfLivingInput = this.shadowRoot?.querySelector<HTMLInputElement>("#costOfLiving");
     return costOfLivingInput ? costOfLivingInput.value : this.#costOfLiving;
   }
 
   get currency() {
-    const currencyInput = this.shadowRoot?.querySelector("#currency");
+    const currencyInput = this.shadowRoot?.querySelector<HTMLInputElement>("#currency");
     return currencyInput ? currencyInput.value : this.#currency;
   }
 
@@ -396,3 +396,9 @@ customElements.define("location-input-group", LocationInputGroup);
 
 export default LocationInputGroup;
 
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "location-input-group": LocationInputGroup;
+  }
+}

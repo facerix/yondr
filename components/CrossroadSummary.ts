@@ -235,3 +235,10 @@ class CrossroadSummary extends HTMLElement {
 }
 
 customElements.define('crossroad-summary', CrossroadSummary);
+export {};
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "crossroad-summary": CrossroadSummary;
+  }
+}

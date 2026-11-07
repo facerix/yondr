@@ -203,3 +203,9 @@ customElements.define("popover-info", PopoverInfo);
 
 export default PopoverInfo;
 
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "popover-info": PopoverInfo;
+  }
+}

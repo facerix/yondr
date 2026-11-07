@@ -17,7 +17,7 @@ whenLoaded.then(() => {
   const btnSettings = document.querySelector("#btnSettings");
   const editOptionModal = document.querySelector("edit-option-modal");
   const userSettingsModal = document.querySelector("user-settings-modal");
-  const url = new URL(window.location)
+  const url = new URL(window.location.href)
   const crossroadId = url.searchParams.get("crossroad");
   DataStore.init();
   window.currencyClient = new CurrencyClient();
@@ -38,7 +38,7 @@ whenLoaded.then(() => {
 
   // Save user settings
   userSettingsModal.addEventListener("settings-save", async (evt) => {
-    const settings = evt.detail.settings;
+    const settings = (evt as CustomEvent).detail.settings;
     DataStore.updateUserSettings(settings);
     // Re-render paths to update with new fixed expenses
     await render();
@@ -51,13 +51,13 @@ whenLoaded.then(() => {
   const endDate = document.querySelector("#end-date");
 
   pathContainer.addEventListener("path-remove", async (evt) => {
-    const path = evt.detail.path;
+    const path = (evt as CustomEvent).detail.path;
     DataStore.deletePath(crossroadId, path.id);
     await render();
   });
 
   pathContainer.addEventListener("path-edit", evt => {
-    const path = evt.detail.path;
+    const path = (evt as CustomEvent).detail.path;
     editOptionModal.mode = "edit";
     editOptionModal.data = path;
     editOptionModal.open();
@@ -118,9 +118,9 @@ whenLoaded.then(() => {
     if (!crossroad) {
       return;
     }
-    crossroadName.innerText = crossroad.name;
-    startDate.innerText = crossroad.startDate;
-    endDate.innerText = crossroad.endDate ?? "Present";
+    crossroadName.textContent = crossroad.name;
+    startDate.textContent = crossroad.startDate;
+    endDate.textContent = crossroad.endDate ?? "Present";
     
     // Show current path first, if it exists
     const currentPath = DataStore.getCurrentPath();
@@ -163,7 +163,7 @@ whenLoaded.then(() => {
   });
 
   editOptionModal.addEventListener("option-save", async (evt) => {
-    const option = evt.detail.option;
+    const option = (evt as CustomEvent).detail.option;
     if (option.id && DataStore.getCrossroadById(crossroadId)?.paths.some(p => p.id === option.id)) {
       // Update existing path
       DataStore.updatePath(crossroadId, option);
@@ -175,7 +175,7 @@ whenLoaded.then(() => {
   });
 
   DataStore.addEventListener("change", async (evt) => {
-    switch (evt.detail.changeType) {
+    switch ((evt as CustomEvent).detail.changeType) {
       case "init":
         // load crossroads and their paths
         await render();
@@ -188,7 +188,7 @@ whenLoaded.then(() => {
         await render();
         break;
       // case "update":
-      //   idea = evt.detail.affectedRecords;
+      //   idea = (evt as CustomEvent).detail.affectedRecords;
       //   await render();
       //   break;
       // case "delete":

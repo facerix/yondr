@@ -3,7 +3,7 @@
 // used by both production and development service workers
 
 // Single source of truth for service worker version
-const SW_VERSION = '1.2.0';
+const SW_VERSION = '1.3.0';
 
 /**
  * Configuration helper

@@ -287,3 +287,8 @@ class CurrentPath extends HTMLElement {
 }
 
 customElements.define('current-path', CurrentPath);
+declare global {
+  interface HTMLElementTagNameMap {
+    "current-path": CurrentPath;
+  }
+}

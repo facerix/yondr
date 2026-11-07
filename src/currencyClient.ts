@@ -1,6 +1,8 @@
 // provides a simple client for the Frankfurter API at https://frankfurter.dev/
 
 export class CurrencyClient {
+  baseUrl: string;
+  apiVersion: string;
   cachedRates = {};
   localStorageKey = 'currencyRates';
   lastUpdated = null;

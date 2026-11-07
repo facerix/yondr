@@ -3,6 +3,7 @@
 import { isDevelopmentMode } from './utils.js';
 
 class ServiceWorkerManager {
+  static instance: ServiceWorkerManager;
   #isRegistered = false;
   #registration = null;
   #listenersSetup = false;

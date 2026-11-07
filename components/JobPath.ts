@@ -535,7 +535,7 @@ class JobPath extends HTMLElement {
   }
 
   set maxCompensation(value) {
-    this.#maxCompensation = parseFloat(value) || 0;
+    this.#maxCompensation = parseFloat(String(value)) || 0;
     this.render();
   }
 
@@ -544,7 +544,7 @@ class JobPath extends HTMLElement {
   }
 
   set maxBottomLine(value) {
-    this.#maxBottomLine = parseFloat(value) || 0;
+    this.#maxBottomLine = parseFloat(String(value)) || 0;
     this.render();
   }
 
@@ -597,3 +597,9 @@ class JobPath extends HTMLElement {
 customElements.define('job-path', JobPath);
 
 export default JobPath;
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "job-path": JobPath;
+  }
+}

@@ -14,7 +14,7 @@ whenLoaded.then(async () => {
   DataStore.init();
 
   DataStore.addEventListener("change", evt => {
-    switch (evt.detail.changeType) {
+    switch ((evt as CustomEvent).detail.changeType) {
       case "init":
         if (DataStore.crossroads?.length > 0) {
           exploreLinkCaption.textContent = "Continue exploring";

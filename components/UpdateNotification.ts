@@ -5,6 +5,10 @@
  */
 
 class UpdateNotification extends HTMLElement {
+    pendingWorker: ServiceWorker | null = null;
+    isVisible = false;
+    boundHandleUpdateNow: () => void;
+    boundHandleUpdateLater: () => void;
     constructor() {
         super();
         this.pendingWorker = null;
@@ -138,7 +142,7 @@ class UpdateNotification extends HTMLElement {
      */
     show(pendingWorker) {
         this.pendingWorker = pendingWorker;
-        const notification = this.shadowRoot.querySelector('.update-notification');
+        const notification = this.shadowRoot.querySelector<HTMLElement>('.update-notification');
 
         if (notification) {
             notification.style.display = 'block';
@@ -159,7 +163,7 @@ class UpdateNotification extends HTMLElement {
      * Hide the update notification
      */
     hide() {
-        const notification = this.shadowRoot.querySelector('.update-notification');
+        const notification = this.shadowRoot.querySelector<HTMLElement>('.update-notification');
 
         if (notification) {
             notification.style.display = 'none';
@@ -225,3 +229,9 @@ class UpdateNotification extends HTMLElement {
 customElements.define('update-notification', UpdateNotification);
 
 export default UpdateNotification;
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "update-notification": UpdateNotification;
+  }
+}

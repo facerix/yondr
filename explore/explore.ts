@@ -60,7 +60,7 @@ whenLoaded.then(() => {
 
   // Save user settings
   userSettingsModal.addEventListener("settings-save", (evt) => {
-    const settings = evt.detail.settings;
+    const settings = (evt as CustomEvent).detail.settings;
     DataStore.updateUserSettings(settings);
   });
 
@@ -76,21 +76,21 @@ whenLoaded.then(() => {
   // Listen for service worker updates
   window.addEventListener('sw-update-available', (event) => {
     console.log('Service worker update available, showing notification');
-    updateNotification.show(event.detail.pendingWorker);
+    updateNotification.show((event as CustomEvent).detail.pendingWorker);
   });
 
   // Handle edit modal events
   editCrossroadModal.addEventListener("crossroad-save", (evt) => {
-    if (evt.detail.mode === "add") {
-      DataStore.addCrossroad(evt.detail.crossroad);
+    if ((evt as CustomEvent).detail.mode === "add") {
+      DataStore.addCrossroad((evt as CustomEvent).detail.crossroad);
     } else {
-      DataStore.updateCrossroad(evt.detail.crossroad);
+      DataStore.updateCrossroad((evt as CustomEvent).detail.crossroad);
     }
   });
 
   // Listen for crossroad-summary-edit events and open the modal
   mainContents.addEventListener("crossroad-summary-edit", (evt) => {
-    const crossroad = DataStore.getCrossroadById(evt.detail.id);
+    const crossroad = DataStore.getCrossroadById((evt as CustomEvent).detail.id);
     if (crossroad) {
       editCrossroadModal.mode = "edit";
       editCrossroadModal.data = crossroad;
@@ -100,7 +100,7 @@ whenLoaded.then(() => {
 
   // Listen for crossroad-summary-remove events and delete the crossroad
   mainContents.addEventListener("crossroad-summary-remove", (evt) => {
-    activeCrossroadId = evt.detail.id;
+    activeCrossroadId = (evt as CustomEvent).detail.id;
     confirmationAction = "deleteCrossroad";
     confirmationModal.showModal("Are you sure you want to delete this crossroad?");
   });
@@ -127,7 +127,7 @@ whenLoaded.then(() => {
 
   DataStore.addEventListener("change", evt => {
     let crossroadElement;
-    switch (evt.detail.changeType) {
+    switch ((evt as CustomEvent).detail.changeType) {
       case "init":
         currentPathElement.data = DataStore.getCurrentPath();
         const activeCrossroads = DataStore.crossroads.filter(crossroad => crossroad.endDate === null);
@@ -148,28 +148,28 @@ whenLoaded.then(() => {
         break;
       case "add-crossroad":
         setTimeout(() => {
-          window.location = `/plan/?crossroad=${evt.detail.affectedRecords.id}`;
+          window.location.href = `/plan/?crossroad=${(evt as CustomEvent).detail.affectedRecords.id}`;
         }, 500);
         break;
       case "update-crossroad":
-        crossroadElement = currentCrossroads.querySelector(`[data-id="${evt.detail.affectedRecords.id}"]`);
+        crossroadElement = currentCrossroads.querySelector(`[data-id="${(evt as CustomEvent).detail.affectedRecords.id}"]`);
         if (crossroadElement) {
-          crossroadElement.data = evt.detail.affectedRecords;
+          crossroadElement.data = (evt as CustomEvent).detail.affectedRecords;
 
           // TODO: move between current and previous sections if needed
         }
         break;
       case "delete-crossroad":
-        const deleteId = Array.isArray(evt.detail.affectedRecords) 
-          ? evt.detail.affectedRecords[0] 
-          : evt.detail.affectedRecords.id;
+        const deleteId = Array.isArray((evt as CustomEvent).detail.affectedRecords) 
+          ? (evt as CustomEvent).detail.affectedRecords[0] 
+          : (evt as CustomEvent).detail.affectedRecords.id;
         crossroadElement = currentCrossroads.querySelector(`[data-id="${deleteId}"]`);
         if (crossroadElement) {
           crossroadElement.remove();
         }
         break;
       case "set-current-path":
-        currentPathElement.data = evt.detail.affectedRecords;
+        currentPathElement.data = (evt as CustomEvent).detail.affectedRecords;
         break;
       case "clear-current-path":
         currentPathElement.data = null;

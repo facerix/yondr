@@ -5,14 +5,16 @@
  * @param {HTMLElement[]} children 
  * @returns HTMLElement
  */
-export const h = (tagName, attrs, children) => {
+export const h = <K extends keyof HTMLElementTagNameMap>(
+  tagName: K,
+  attrs: Record<string, unknown> = {},
+  children: Node[] = [],
+): HTMLElementTagNameMap[K] => {
   const el = document.createElement(tagName);
-  if (attrs) {
-    for (const [key, value] of Object.entries(attrs)) {
-      el[key] = value;
-    }
+  for (const [key, value] of Object.entries(attrs)) {
+    (el as unknown as Record<string, unknown>)[key] = value;
   }
-  children?.forEach(child => el.appendChild(child));
+  children.forEach(child => el.appendChild(child));
   return el;
 }
 

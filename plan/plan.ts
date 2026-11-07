@@ -114,67 +114,30 @@ whenLoaded.then(() => {
     startDate.textContent = crossroad.startDate;
     endDate.textContent = crossroad.endDate ?? "Present";
     
-    // Show current path first, if it exists
+    // The current path (if any) sits in the same flat list as the options as its
+    // first card, so every option can be compared side by side.
     const currentPath = DataStore.getCurrentPath();
-    // Include current path in allPaths for comparison
     const allPaths = currentPath ? [currentPath, ...crossroad.paths] : crossroad.paths;
-    
+
     // Calculate max values once for all paths
     const { comparisons, maxCompensation, maxBottomLine, bestBottomLinePaths } = await calculateComparisons(allPaths);
     const settings = DataStore.getUserSettings();
     comparisonHint.textContent = livingMode.value === 'commute'
       ? `Using current living costs${settings.currentLocation ? ` in ${settings.currentLocation}` : ''}. ${settings.currentLocationCostOfLivingSpend == null ? 'Set current living costs in settings to see bottom lines.' : ''}`
       : 'Using each job location’s estimated living costs. Missing estimates show no bottom line.';
-    
-    if (currentPath) {
-      const currentPathElement = document.createElement("job-path");
+
+    allPaths.forEach(path => {
+      const isCurrent = path === currentPath;
+      const pathElement = document.createElement("job-path");
       // Set max values before pathData to avoid rendering with incorrect defaults
-      currentPathElement.comparison = comparisons.get(currentPath.id);
-      currentPathElement.maxCompensation = maxCompensation;
-      currentPathElement.maxBottomLine = maxBottomLine;
-      currentPathElement.pathData = currentPath;
-      currentPathElement.isCurrent = true;
-      currentPathElement.readonly = true;
-      currentPathElement.hasBestBottomLine = bestBottomLinePaths.has(currentPath.id);
-      pathContainer.append(currentPathElement);
-    }
-    
-    // Group paths by place while preserving the first-seen order.
-    const groups = new Map();
-    crossroad.paths.forEach(path => {
-      const key = (path.location || '').trim().toLocaleLowerCase();
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(path);
-    });
-    groups.forEach(paths => {
-      const section = document.createElement('section');
-      section.className = 'location-group';
-      const heading = document.createElement('h3');
-      heading.textContent = paths[0].location || 'Location not specified';
-      const cards = document.createElement('div');
-      cards.className = 'location-cards';
-      section.append(heading, cards);
-      pathContainer.append(section);
-      paths.forEach(path => {
-        const pathElement = document.createElement("job-path");
-        pathElement.comparison = comparisons.get(path.id);
-        pathElement.maxCompensation = maxCompensation;
-        pathElement.maxBottomLine = maxBottomLine;
-        pathElement.pathData = path;
-        pathElement.isCurrent = currentPath && path.id === currentPath.id;
-        pathElement.hasBestBottomLine = bestBottomLinePaths.has(path.id);
-        cards.append(pathElement);
-      });
-      const addHere = document.createElement('button');
-      addHere.type = 'button';
-      addHere.className = 'btn add-here';
-      addHere.textContent = 'Add another job here';
-      addHere.addEventListener('click', () => {
-        editOptionModal.mode = 'add';
-        editOptionModal.prefillLocation(paths[0]);
-        editOptionModal.open();
-      });
-      section.append(addHere);
+      pathElement.comparison = comparisons.get(path.id);
+      pathElement.maxCompensation = maxCompensation;
+      pathElement.maxBottomLine = maxBottomLine;
+      pathElement.pathData = path;
+      pathElement.isCurrent = isCurrent;
+      pathElement.readonly = isCurrent;
+      pathElement.hasBestBottomLine = bestBottomLinePaths.has(path.id);
+      pathContainer.append(pathElement);
     });
   }
 

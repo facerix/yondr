@@ -3,9 +3,12 @@
 import DataStore from "../src/DataStore.js";
 import { CurrencyClient } from "../src/currencyClient.js";
 import "./PopoverInfo.js";
+import { formatEquityGrant, formatEquityTerms, formatJobOptionName, hasConcreteSalary, sortTimeline, validateHttpUrl } from '../src/jobPathModel.js';
+import { renderNoteMarkdown } from '../src/noteMarkdown.js';
 
 const CSS = `
 :host {
+  display: block;
   --primary-color: #7c0028;
   --border-color: rgba(124, 0, 40, 0.3);
   --focus-color: rgba(124, 0, 40, 0.5);
@@ -266,6 +269,24 @@ h3 {
   border-radius: 4px;
   transition: width 0.3s ease-out;
 }
+
+.job-meta, .latest-note { margin: 0.25em 0 0.75em; color: var(--primary-color); }
+.equity { overflow-wrap: anywhere; }
+.equity .metric-row { align-items: flex-start; gap: 0.75em; }
+.equity .metric-value { text-align: right; }
+.equity small { display: block; color: var(--text-muted); }
+.job-link { overflow-wrap: anywhere; }
+.timeline { margin-top: 1em; border-top: 1px solid var(--border-color); padding-top: 0.75em; }
+.timeline ol { padding-left: 1.4em; }
+.timeline li { margin: 0.5em 0; overflow-wrap: anywhere; }
+.note-body { margin: 0.25em 0; color: #333; }
+.note-body p { margin: 0.25em 0; }
+.note-body ul { margin: 0.25em 0; padding-left: 1.4em; }
+.timeline-form { display: grid; gap: 0.5em; }
+.timeline-form textarea { min-height: 4em; resize: vertical; }
+.timeline-form input, .timeline-form textarea { width: 100%; box-sizing: border-box; }
+.timeline button { margin-right: 0.5em; }
+[hidden] { display: none !important; }
 `;
 
 const TEMPLATE = `
@@ -283,6 +304,9 @@ const TEMPLATE = `
   <div class="header">
     <h3></h3>
     <p class="location"></p>
+    <p class="job-meta"></p>
+    <a class="job-link" hidden target="_blank" rel="noopener noreferrer">Job listing</a>
+    <p class="latest-note"></p>
   </div>
 
   <div class="metrics">
@@ -294,6 +318,14 @@ const TEMPLATE = `
       <div class="progress-track">
         <div class="progress-fill" data-field="compensation-fill"></div>
       </div>
+    </div>
+
+    <div class="metric equity" hidden>
+      <div class="metric-row">
+        <span class="metric-label">Equity</span>
+        <span class="metric-value equity-summary"></span>
+      </div>
+      <small class="equity-details"></small>
     </div>
 
     <div class="metric">
@@ -327,6 +359,20 @@ const TEMPLATE = `
       </div>
     </div>
   </div>
+  <details class="timeline">
+    <summary>Timeline and notes</summary>
+    <ol></ol>
+    <form class="timeline-form" hidden>
+      <label>Date <input type="date" name="date" required /></label>
+      <label>Title <input type="text" name="title" required /></label>
+      <label>Note <textarea name="note" required></textarea></label>
+      <small>Markdown supported: **bold**, *italic*, links, headings, and lists.</small>
+      <label>Link (optional) <input type="url" name="url" placeholder="https://…" /></label>
+      <p class="timeline-error" role="alert"></p>
+      <div><button type="submit">Save note</button><button type="button" class="cancel-note">Cancel</button></div>
+    </form>
+    <button type="button" class="add-note">Add note</button>
+  </details>
 `;
 
 class JobPath extends HTMLElement {
@@ -337,9 +383,11 @@ class JobPath extends HTMLElement {
   #container = null;
   #boundHandleRemove = null;
   #boundHandleEdit = null;
+  #editingEntryId = null;
   #isCurrent = false;
   #readonly = false;
   #hasBestBottomLine = false;
+  #comparison = null;
   #currencyClient = null;
   constructor() {
       super();
@@ -369,14 +417,15 @@ class JobPath extends HTMLElement {
   #init() {
     if (!this.#ready) {
       // connect event handlers
-      this.setupEventListeners();
       this.#container = this.shadowRoot.querySelector('.container');
+      this.setupEventListeners();
 
       this.#ready = true;
     }
   }
 
   async #transformPathData(path, maxCompensation, maxBottomLine) {
+    const concrete = hasConcreteSalary(path);
     // Calculate compensation (baseSalary + bonuses)
     const baseSalary = parseFloat(path.baseSalary) || 0;
     const bonuses = parseFloat(path.bonuses) || 0;
@@ -429,7 +478,8 @@ class JobPath extends HTMLElement {
     
     // Use yearNetIncome as bottomLine, or calculate from compensation - convertedFixedExpenses
     const yearNetIncome = parseFloat(path.yearNetIncome) || 0;
-    const bottomLine = yearNetIncome || Math.max(0, compensation - convertedFixedExpenses);
+    const bottomLine = path.yearNetIncome !== null && path.yearNetIncome !== undefined && path.yearNetIncome !== ''
+      ? yearNetIncome : Math.max(0, compensation - convertedFixedExpenses);
     
     const formatCurrency = (amount) => {
       return new Intl.NumberFormat(undefined, {
@@ -444,17 +494,26 @@ class JobPath extends HTMLElement {
     const bottomLinePercentage = maxBottomLine > 0 ? (bottomLine / maxBottomLine) * 100 : 0;
     
     return {
-      name: path.name,
+      name: formatJobOptionName(path),
       location: path.location,
-      compensation: formatCurrency(compensation),
+      compensation: concrete ? formatCurrency(compensation) : this.#formatSalaryRange(path, formatCurrency),
       expenses: formatCurrency(convertedFixedExpenses),
-      taxes: formatCurrency(convertedTax),
-      bottomLine: formatCurrency(bottomLine),
+      taxes: concrete ? formatCurrency(convertedTax) : '—',
+      bottomLine: concrete ? formatCurrency(bottomLine) : '—',
       costOfLiving: path.costOfLiving || "—",
       costOfLivingSpend: costOfLivingSpend !== null ? formatCurrency(costOfLivingSpend) : "—",
-      compensationPercentage: compensationPercentage.toFixed(1),
-      bottomLinePercentage: bottomLinePercentage.toFixed(1)
+      compensationPercentage: concrete ? compensationPercentage.toFixed(1) : '0',
+      bottomLinePercentage: concrete ? bottomLinePercentage.toFixed(1) : '0'
     };
+  }
+
+  #formatSalaryRange(path, formatCurrency) {
+    if (path.salaryMin != null && path.salaryMin !== '' && path.salaryMax != null && path.salaryMax !== '') {
+      return `${formatCurrency(Number(path.salaryMin))}–${formatCurrency(Number(path.salaryMax))} range`;
+    }
+    if (path.salaryMin != null && path.salaryMin !== '') return `From ${formatCurrency(Number(path.salaryMin))}`;
+    if (path.salaryMax != null && path.salaryMax !== '') return `Up to ${formatCurrency(Number(path.salaryMax))}`;
+    return 'Not yet known';
   }
 
   async render() {
@@ -465,24 +524,97 @@ class JobPath extends HTMLElement {
     this.#container.querySelector('h3').textContent = transformed.name;
     const locationEl = this.#container.querySelector('.location');
     
-    if (transformed.costOfLiving && transformed.costOfLiving !== "—") {
-      locationEl.innerHTML = `
-        ${transformed.location} (${transformed.costOfLiving})
-        <popover-info 
-          content="The cost of living index compares the cost of living in this location to New York City (100). A lower number means it's cheaper to live there, while a higher number means it's more expensive."
-          aria-label="Cost of living index explanation">
-        </popover-info>
-      `;
-    } else {
-      locationEl.textContent = transformed.location;
+    locationEl.textContent = transformed.location || '';
+    if (transformed.costOfLiving && transformed.costOfLiving !== '—') {
+      locationEl.append(document.createTextNode(` (${transformed.costOfLiving})`));
     }
-    this.#container.querySelector('[data-field="compensation"]').textContent = transformed.compensation;
-    this.#container.querySelector('[data-field="compensation-fill"]').style.width = transformed.compensationPercentage + '%';
-    this.#container.querySelector('[data-field="costOfLivingSpend"]').textContent = transformed.costOfLivingSpend;
-    this.#container.querySelector('[data-field="expenses"]').textContent = transformed.expenses;
-    this.#container.querySelector('[data-field="taxes"]').textContent = transformed.taxes;
-    this.#container.querySelector('[data-field="bottomLine"]').textContent = transformed.bottomLine;
-    this.#container.querySelector('[data-field="bottomLine-fill"]').style.width = transformed.bottomLinePercentage + '%';
+    const path = this.#pathData;
+    const meta = [path.workPolicy === 'in-office' ? 'In office' : path.workPolicy === 'hybrid' ? `Hybrid · ${path.officeDays ?? '?'} office days/week` : path.workPolicy === 'remote' ? 'Remote' : '', this.#readonly ? '' : (path.status || 'Interested')].filter(Boolean);
+    this.#container.querySelector('.job-meta').textContent = meta.join(' · ');
+    const equityElement = this.#container.querySelector('.equity');
+    equityElement.hidden = !path.equity?.type;
+    if (path.equity?.type) {
+      equityElement.querySelector('.equity-summary').textContent = formatEquityGrant(path.equity);
+      const details = [formatEquityTerms(path.equity), path.equity.vestingStart ? `Starts ${path.equity.vestingStart}` : '', path.equity.notes || '', 'Excluded from cash totals'].filter(Boolean);
+      equityElement.querySelector('.equity-details').textContent = details.join(' · ');
+    }
+    const listing = this.#container.querySelector('.job-link');
+    try {
+      listing.href = validateHttpUrl(path.listingUrl);
+      listing.hidden = !path.listingUrl;
+    } catch { listing.hidden = true; listing.removeAttribute('href'); }
+    const entries = sortTimeline(path.timeline || []);
+    this.#container.querySelector('.latest-note').textContent = entries.length ? `Latest: ${entries[0].date} · ${entries[0].title || entries[0].note.split('\n')[0]}` : '';
+    this.#renderTimeline(entries);
+    this.#container.querySelector('.timeline').hidden = this.#readonly && entries.length === 0;
+    const comparison = this.#comparison;
+    const format = value => new Intl.NumberFormat(undefined, { style: 'currency', currency: path.currency || 'USD', maximumFractionDigits: 0 }).format(value);
+    this.#container.querySelector('[data-field="compensation"]').textContent = comparison?.projected ? `${format(comparison.compensation)} projected` : transformed.compensation;
+    this.#container.querySelector('[data-field="compensation-fill"]').style.width = comparison && this.#maxCompensation > 0 ? `${Math.min(100, comparison.referenceCompensation / this.#maxCompensation * 100)}%` : '0%';
+    this.#container.querySelector('.metric .progress-track').hidden = !comparison;
+    this.#container.querySelector('[data-field="costOfLivingSpend"]').textContent = comparison?.livingCost == null ? '—' : format(comparison.livingCost);
+    this.#container.querySelector('[data-field="costOfLivingSpend"]').previousElementSibling.textContent = comparison?.livingMode === 'commute' ? 'Current Living Costs' : 'Est. Cost of Living Spend';
+    this.#container.querySelector('[data-field="expenses"]').textContent = comparison ? format(comparison.fixedExpenses) : transformed.expenses;
+    this.#container.querySelector('[data-field="taxes"]').textContent = comparison ? format(comparison.tax) : transformed.taxes;
+    this.#container.querySelector('[data-field="bottomLine"]').textContent = comparison?.bottomLine == null ? '—' : `${format(comparison.bottomLine)}${comparison.projected ? ' projected' : ''}`;
+    this.#container.querySelector('[data-field="bottomLine-fill"]').style.width = comparison?.referenceBottomLine != null && this.#maxBottomLine > 0 ? `${Math.min(100, comparison.referenceBottomLine / this.#maxBottomLine * 100)}%` : '0%';
+    this.#container.querySelector('.bottom-line').hidden = !comparison;
+    this.#container.querySelector('.bottom-line-label').textContent = comparison?.livingMode === 'commute' ? 'Bottom Line · Commute' : 'Bottom Line · Relocate';
+  }
+
+  #renderTimeline(entries) {
+    const list = this.#container.querySelector('.timeline ol');
+    list.replaceChildren();
+    for (const entry of entries) {
+      const item = document.createElement('li');
+      const label = document.createElement('span');
+      label.textContent = `${entry.date} · ${entry.title || entry.note.split('\n')[0]}`;
+      item.append(label);
+      const body = document.createElement('div');
+      body.className = 'note-body';
+      body.innerHTML = renderNoteMarkdown(entry.note);
+      item.append(body);
+      if (entry.url) {
+        try {
+          const link = document.createElement('a');
+          link.href = validateHttpUrl(entry.url);
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = 'Link';
+          item.append(link);
+        } catch { /* Invalid legacy links are not opened. */ }
+      }
+      if (!this.#readonly) {
+        for (const [text, action] of [['Edit', 'edit'], ['Delete', 'delete']]) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = text;
+          button.addEventListener('click', () => action === 'edit' ? this.#openNoteForm(entry) : this.#emitTimeline('timeline-delete', { entryId: entry.id }));
+          item.append(button);
+        }
+      }
+      list.append(item);
+    }
+    this.#container.querySelector('.add-note').hidden = this.#readonly;
+  }
+
+  #openNoteForm(entry = null) {
+    const form = this.#container.querySelector('.timeline-form');
+    this.#editingEntryId = entry?.id || null;
+    form.hidden = false;
+    this.#container.querySelector('.add-note').hidden = true;
+    const now = new Date();
+    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    form.elements.date.value = entry?.date || localDate;
+    form.elements.title.value = entry?.title || entry?.note?.split('\n')[0] || '';
+    form.elements.note.value = entry?.note || '';
+    form.elements.url.value = entry?.url || '';
+    form.querySelector('.timeline-error').textContent = '';
+    form.elements.note.focus();
+  }
+
+  #emitTimeline(type, payload) {
+    this.dispatchEvent(new CustomEvent(type, { detail: { pathId: this.#pathData.id, ...payload }, bubbles: true, composed: true }));
   }
 
   #handleRemove() {
@@ -512,6 +644,19 @@ class JobPath extends HTMLElement {
     if (editBtn) {
       editBtn.addEventListener('click', this.#boundHandleEdit);
     }
+    this.#container.querySelector('.add-note').addEventListener('click', () => this.#openNoteForm());
+    this.#container.querySelector('.cancel-note').addEventListener('click', () => {
+      this.#container.querySelector('.timeline-form').hidden = true;
+      this.#container.querySelector('.add-note').hidden = false;
+    });
+    this.#container.querySelector('.timeline-form').addEventListener('submit', evt => {
+      evt.preventDefault();
+      const form = evt.currentTarget;
+      const entry = { id: this.#editingEntryId, date: form.elements.date.value, title: form.elements.title.value.trim(), note: form.elements.note.value.trim(), url: form.elements.url.value.trim() };
+      try { validateHttpUrl(entry.url); } catch (error) { form.querySelector('.timeline-error').textContent = error.message; return; }
+      this.#emitTimeline(this.#editingEntryId ? 'timeline-update' : 'timeline-add', { entry });
+      form.hidden = true;
+    });
   }
 
   cleanupEventListeners() {
@@ -530,12 +675,17 @@ class JobPath extends HTMLElement {
     this.render();
   }
 
+  set comparison(value) {
+    this.#comparison = value;
+    this.render();
+  }
+
   get pathData() {
     return this.#pathData;
   }
 
   set maxCompensation(value) {
-    this.#maxCompensation = parseFloat(value) || 0;
+    this.#maxCompensation = parseFloat(String(value)) || 0;
     this.render();
   }
 
@@ -544,7 +694,7 @@ class JobPath extends HTMLElement {
   }
 
   set maxBottomLine(value) {
-    this.#maxBottomLine = parseFloat(value) || 0;
+    this.#maxBottomLine = parseFloat(String(value)) || 0;
     this.render();
   }
 
@@ -572,6 +722,7 @@ class JobPath extends HTMLElement {
     } else {
       this.removeAttribute('readonly');
     }
+    if (this.#pathData) this.render();
   }
 
   get readonly() {
@@ -597,3 +748,9 @@ class JobPath extends HTMLElement {
 customElements.define('job-path', JobPath);
 
 export default JobPath;
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "job-path": JobPath;
+  }
+}

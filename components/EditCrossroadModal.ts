@@ -301,7 +301,7 @@ class EditCrossroadModal extends HTMLElement {
     const closeBtn = this.shadowRoot.querySelector(".close-btn");
     const cancelBtn = this.shadowRoot.querySelector(".btn-cancel");
     const form = this.shadowRoot.querySelector(".edit-form");
-    const activeCheckbox = this.shadowRoot.querySelector("#isActive");
+    const activeCheckbox = this.shadowRoot.querySelector<HTMLInputElement>("#isActive");
 
     this.#boundHandleClose = this.#handleClose.bind(this);
     this.#boundHandleSubmit = this.#handleSubmit.bind(this);
@@ -325,7 +325,7 @@ class EditCrossroadModal extends HTMLElement {
     const closeBtn = this.shadowRoot.querySelector(".close-btn");
     const cancelBtn = this.shadowRoot.querySelector(".btn-cancel");
     const form = this.shadowRoot.querySelector(".edit-form");
-    const activeCheckbox = this.shadowRoot.querySelector("#isActive");
+    const activeCheckbox = this.shadowRoot.querySelector<HTMLInputElement>("#isActive");
 
     if (closeBtn) {
       closeBtn.removeEventListener("click", this.#boundHandleClose);
@@ -350,7 +350,7 @@ class EditCrossroadModal extends HTMLElement {
     const formData = new FormData(this.shadowRoot.querySelector(".edit-form"));
     const startDateValue = formData.get("startDate");
     const endDateValue = formData.get("endDate");
-    const data = {
+    const data: { name: FormDataEntryValue; startDate: FormDataEntryValue | null; endDate: FormDataEntryValue | null; id?: string; paths?: unknown[] } = {
       name: formData.get("title"),
       startDate: startDateValue || null,
       endDate: formData.get("isActive") ? null : (endDateValue || null),
@@ -371,9 +371,9 @@ class EditCrossroadModal extends HTMLElement {
   }
 
   #handleActiveChange() {
-    const isActive = this.shadowRoot.querySelector("#isActive").checked;
+    const isActive = this.shadowRoot.querySelector<HTMLInputElement>("#isActive").checked;
     const endDateGroup = this.shadowRoot.querySelector(".end-date-group");
-    const endDateInput = this.shadowRoot.querySelector("#endDate");
+    const endDateInput = this.shadowRoot.querySelector<HTMLInputElement>("#endDate");
 
     if (isActive) {
       endDateGroup.classList.add("disabled");
@@ -404,10 +404,10 @@ class EditCrossroadModal extends HTMLElement {
   }
 
   #populateForm() {
-    const titleInput = this.shadowRoot.querySelector("#title");
-    const startDateInput = this.shadowRoot.querySelector("#startDate");
-    const endDateInput = this.shadowRoot.querySelector("#endDate");
-    const isActiveCheckbox = this.shadowRoot.querySelector("#isActive");
+    const titleInput = this.shadowRoot.querySelector<HTMLInputElement>("#title");
+    const startDateInput = this.shadowRoot.querySelector<HTMLInputElement>("#startDate");
+    const endDateInput = this.shadowRoot.querySelector<HTMLInputElement>("#endDate");
+    const isActiveCheckbox = this.shadowRoot.querySelector<HTMLInputElement>("#isActive");
 
     // Convert date to yyyy-mm-dd format for date input
     const formatDate = (date) => {
@@ -454,7 +454,7 @@ class EditCrossroadModal extends HTMLElement {
     overlay.classList.add("visible");
     // Focus the title input for better UX
     setTimeout(() => {
-      this.shadowRoot.querySelector("#title").focus();
+      this.shadowRoot.querySelector<HTMLInputElement>("#title").focus();
     }, 100);
   }
 
@@ -470,3 +470,9 @@ class EditCrossroadModal extends HTMLElement {
 }
 
 customElements.define("edit-crossroad-modal", EditCrossroadModal);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "edit-crossroad-modal": EditCrossroadModal;
+  }
+}

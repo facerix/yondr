@@ -5,6 +5,7 @@ import { calculateUSIncomeTax2025 } from "../src/utils.js";
 import DataStore from "../src/DataStore.js";
 import { CurrencyClient } from "../src/currencyClient.js";
 import { lookupCostOfLiving } from "../src/costOfLivingData.js";
+import { validateJobPath } from "../src/jobPathModel.js";
 import "../components/LocationInputGroup.js";
 import "../components/PopoverInfo.js";
 
@@ -128,7 +129,9 @@ const CSS = `
   }
 
   input[type="text"],
+  input[type="url"],
   input[type="number"],
+  input[type="date"],
   select {
     padding: 0.75em;
     border: 1px solid var(--border-color);
@@ -178,6 +181,9 @@ const CSS = `
 .flex-1 {
   flex: 1;
 }
+
+[hidden] { display: none !important; }
+.form-error { color: #a00020; margin: 0.5em 0; }
 
 .modal-footer {
   display: flex;
@@ -243,24 +249,59 @@ const TEMPLATE = `
 
     <form class="edit-form">
       <div class="form-group-row">
-        <div class="form-group flex-1">
-          <label for="optionName">Option Name</label>
-          <input type="text" id="optionName" name="optionName" autocomplete="off" required />
-        </div>
+        <div class="form-group flex-1"><label for="company">Company</label><input type="text" id="company" name="company" required /></div>
+        <div class="form-group flex-1"><label for="role">Role</label><input type="text" id="role" name="role" required /></div>
+      </div>
+      <div class="form-group-row">
+        <div class="form-group flex-1"><label for="listingUrl">Job listing URL</label><input type="url" id="listingUrl" name="listingUrl" placeholder="https://…" /></div>
+        <div class="form-group flex-1"><label for="status">Application status</label><select id="status" name="status">
+          <option>Interested</option><option>Applied</option><option>Interviewing</option><option>Offer</option><option>Accepted</option><option>Rejected</option><option>Withdrawn</option>
+        </select></div>
+      </div>
+      <div class="form-group-row">
+        <div class="form-group flex-1"><label for="workPolicy">Work policy</label><select id="workPolicy" name="workPolicy">
+          <option value="">Not specified</option><option value="in-office">In office</option><option value="hybrid">Hybrid</option><option value="remote">Remote</option>
+        </select></div>
+        <div class="form-group flex-1" id="officeDaysGroup" hidden><label for="officeDays">Office days per week</label><input type="number" id="officeDays" name="officeDays" min="0" max="5" step="1" /></div>
       </div>
 
       <location-input-group id="locationGroup"></location-input-group>
 
       <div class="form-group-row">
         <div class="form-group flex-1">
-          <label for="baseSalary">Base salary</label>
-          <input type="number" step="0.01" min="0" id="baseSalary" name="baseSalary" autocomplete="off" required />
+          <label for="baseSalary">Concrete base salary (if known)</label>
+          <input type="number" step="0.01" min="0" id="baseSalary" name="baseSalary" autocomplete="off" />
         </div>
 
         <div class="form-group flex-1">
           <label for="bonuses">Total Bonuses (not equity)</label>
           <input type="number" step="0.01" min="0" id="bonuses" name="bonuses" autocomplete="off" value="0" />
         </div>
+      </div>
+      <div class="form-group-row">
+        <div class="form-group flex-1"><label for="salaryMin">Salary range minimum</label><input type="number" step="0.01" min="0" id="salaryMin" name="salaryMin" /></div>
+        <div class="form-group flex-1"><label for="salaryMax">Salary range maximum</label><input type="number" step="0.01" min="0" id="salaryMax" name="salaryMax" /></div>
+      </div>
+
+      <div class="form-group-row">
+        <div class="form-group flex-1"><label for="equityType">Equity grant</label><select id="equityType" name="equityType">
+          <option value="">None or unknown</option><option value="options">Stock options</option><option value="rsu">RSUs</option>
+        </select></div>
+      </div>
+      <div id="equityDetails" hidden>
+        <div class="form-group-row">
+          <div class="form-group flex-1"><label for="equityQuantity">Shares or units granted</label><input type="number" step="any" min="0" id="equityQuantity" name="equityQuantity" /></div>
+          <div class="form-group flex-1" id="strikePriceGroup"><label for="strikePrice">Strike price per option</label><input type="number" step="0.01" min="0" id="strikePrice" name="strikePrice" /></div>
+          <div class="form-group flex-1" id="strikeCurrencyGroup"><label for="strikeCurrency">Strike currency</label><input type="text" id="strikeCurrency" name="strikeCurrency" maxlength="3" placeholder="USD" /></div>
+          <div class="form-group flex-1"><label for="vestingStart">Vesting start date</label><input type="date" id="vestingStart" name="vestingStart" /></div>
+        </div>
+        <div class="form-group-row">
+          <div class="form-group flex-1"><label for="vestingMonths">Vesting duration (months)</label><input type="number" step="1" min="1" id="vestingMonths" name="vestingMonths" /></div>
+          <div class="form-group flex-1"><label for="cliffMonths">Cliff (months, 0 if none)</label><input type="number" step="1" min="0" id="cliffMonths" name="cliffMonths" /></div>
+          <div class="form-group flex-1"><label for="vestingCadence">Vest after cliff</label><select id="vestingCadence" name="vestingCadence"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annually">Annually</option></select></div>
+        </div>
+        <div class="form-group-row"><div class="form-group flex-1"><label for="equityNotes">Equity notes</label><input type="text" id="equityNotes" name="equityNotes" placeholder="Exercise window, refresh grants, etc." /></div></div>
+        <p>Equity is shown separately from cash compensation and tax estimates.</p>
       </div>
 
       <div class="form-group-row">
@@ -311,6 +352,7 @@ const TEMPLATE = `
       </div> -->
 
       <div class="modal-footer">
+        <p class="form-error" role="alert"></p>
         <button type="button" class="btn btn-cancel">Cancel</button>
         <button type="submit" class="btn btn-save">Save</button>
       </div>
@@ -368,8 +410,10 @@ class EditOptionModal extends HTMLElement {
     form.addEventListener("submit", this.#boundHandleSubmit);
 
     // Attach change handler to fields that affect taxable income
-    const baseSalaryInput = this.shadowRoot.querySelector("#baseSalary");
-    const bonusesInput = this.shadowRoot.querySelector("#bonuses");
+    const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
+    const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
+    this.shadowRoot.querySelector('#workPolicy').addEventListener('change', () => this.#updateOfficeDays());
+    this.shadowRoot.querySelector('#equityType').addEventListener('change', () => this.#updateEquityFields());
 
     baseSalaryInput.addEventListener("input", this.#boundUpdateTaxableIncome);
     bonusesInput.addEventListener("input", this.#boundUpdateTaxableIncome);
@@ -402,8 +446,8 @@ class EditOptionModal extends HTMLElement {
     const closeBtn = this.shadowRoot.querySelector(".close-btn");
     const cancelBtn = this.shadowRoot.querySelector(".btn-cancel");
     const form = this.shadowRoot.querySelector(".edit-form");
-    const baseSalaryInput = this.shadowRoot.querySelector("#baseSalary");
-    const bonusesInput = this.shadowRoot.querySelector("#bonuses");
+    const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
+    const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
 
     if (closeBtn) {
       closeBtn.removeEventListener("click", this.#boundHandleClose);
@@ -438,15 +482,21 @@ class EditOptionModal extends HTMLElement {
   }
 
   async #updateTaxableIncome() {
-    const baseSalaryInput = this.shadowRoot.querySelector("#baseSalary");
-    const bonusesInput = this.shadowRoot.querySelector("#bonuses");
-    const taxableIncomeInput = this.shadowRoot.querySelector("#taxableIncome");
+    const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
+    const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
+    const taxableIncomeInput = this.shadowRoot.querySelector<HTMLInputElement>("#taxableIncome");
     const taxableIncomeDisplay = this.shadowRoot.querySelector("#taxableIncomeDisplay");
-    const usTaxInput = this.shadowRoot.querySelector("#usTax");
+    const usTaxInput = this.shadowRoot.querySelector<HTMLInputElement>("#usTax");
     const usTaxDisplay = this.shadowRoot.querySelector("#usTaxDisplay");
-    const yearNetIncomeInput = this.shadowRoot.querySelector("#yearNetIncome");
+    const yearNetIncomeInput = this.shadowRoot.querySelector<HTMLInputElement>("#yearNetIncome");
     const yearNetIncomeDisplay = this.shadowRoot.querySelector("#yearNetIncomeDisplay");
     const estimatedCostOfLivingDisplay = this.shadowRoot.querySelector("#estimatedCostOfLivingDisplay");
+    if (baseSalaryInput.value === '') {
+      for (const field of [taxableIncomeInput, usTaxInput, yearNetIncomeInput]) field.value = '';
+      for (const field of [taxableIncomeDisplay, usTaxDisplay, yearNetIncomeDisplay]) field.textContent = '—';
+      await this.#updateEstimatedCostOfLiving(estimatedCostOfLivingDisplay);
+      return;
+    }
     
     // Calculate and update estimated cost of living (async) - get the value for subtraction
     const estimatedCostOfLivingValue = await this.#updateEstimatedCostOfLiving(estimatedCostOfLivingDisplay);
@@ -578,10 +628,10 @@ class EditOptionModal extends HTMLElement {
     if (currentLocationCostOfLivingSpend > 0 && currentLocationCostOfLivingIndex > 0 && optionCostOfLivingIndex > 0) {
       // Get current location currency by looking up the location
       const currentLocation = userSettings.currentLocation || null;
-      let currentLocationCurrency = "USD"; // Default fallback
+      let currentLocationCurrency = userSettings.currentLocationCurrency || "USD";
       if (currentLocation) {
         const locationData = lookupCostOfLiving(currentLocation);
-        if (locationData && locationData.currency) {
+        if (!userSettings.currentLocationCurrency && locationData && locationData.currency) {
           currentLocationCurrency = locationData.currency;
         }
       }
@@ -620,12 +670,23 @@ class EditOptionModal extends HTMLElement {
   async #handleSubmit(evt) {
     evt.preventDefault();
     const formData = new FormData(this.shadowRoot.querySelector(".edit-form"));
-    const nameValue = formData.get("optionName");
     const baseSalaryValue = formData.get("baseSalary");
     const bonusesValue = formData.get("bonuses");
     const taxableIncomeValue = formData.get("taxableIncome");
     const usTaxValue = formData.get("usTax");
     const yearNetIncomeValue = formData.get("yearNetIncome");
+    const equityType = formData.get('equityType');
+    const equity = equityType ? {
+      type: equityType,
+      quantity: formData.get('equityQuantity'),
+      strikePrice: equityType === 'options' ? formData.get('strikePrice') : null,
+      strikeCurrency: equityType === 'options' ? String(formData.get('strikeCurrency') || 'USD').trim().toUpperCase() : null,
+      vestingStart: formData.get('vestingStart'),
+      vestingMonths: formData.get('vestingMonths'),
+      cliffMonths: formData.get('cliffMonths'),
+      cadence: formData.get('vestingCadence'),
+      notes: String(formData.get('equityNotes') || '').trim(),
+    } : null;
     
     // Get values from location input group (job location, not current location)
     const locationValue = this.#locationInputGroup?.location || "";
@@ -644,10 +705,10 @@ class EditOptionModal extends HTMLElement {
     if (currentLocationCostOfLivingSpend > 0 && currentLocationCostOfLivingIndex > 0 && optionCostOfLivingIndex > 0) {
       // Get current location currency by looking up the location
       const currentLocation = userSettings.currentLocation || null;
-      let currentLocationCurrency = "USD"; // Default fallback
+      let currentLocationCurrency = userSettings.currentLocationCurrency || "USD";
       if (currentLocation) {
         const locationData = lookupCostOfLiving(currentLocation);
-        if (locationData && locationData.currency) {
+        if (!userSettings.currentLocationCurrency && locationData && locationData.currency) {
           currentLocationCurrency = locationData.currency;
         }
       }
@@ -670,18 +731,34 @@ class EditOptionModal extends HTMLElement {
       costOfLivingSpendValue = userSpendInJobCurrency * ratio;
     }
     
-    const data = {
-      name: nameValue,
+    const data: { id?: string; [key: string]: unknown } = {
+      company: String(formData.get('company') || '').trim(),
+      role: String(formData.get('role') || '').trim(),
+      listingUrl: String(formData.get('listingUrl') || '').trim(),
+      status: formData.get('status') || 'Interested',
+      workPolicy: formData.get('workPolicy') || '',
+      officeDays: formData.get('workPolicy') === 'hybrid' ? formData.get('officeDays') : null,
       location: locationValue,
       currency: currencyValue,
-      baseSalary: baseSalaryValue,
+      baseSalary: baseSalaryValue === '' ? null : baseSalaryValue,
+      salaryMin: formData.get('salaryMin') || null,
+      salaryMax: formData.get('salaryMax') || null,
       bonuses: bonusesValue,
+      equity,
       costOfLiving: costOfLivingValue || null,
       costOfLivingSpend: costOfLivingSpendValue,
-      taxableIncome: taxableIncomeValue,
-      usTax: usTaxValue,
-      yearNetIncome: yearNetIncomeValue,
+      taxableIncome: baseSalaryValue === '' ? null : taxableIncomeValue,
+      usTax: baseSalaryValue === '' ? null : usTaxValue,
+      yearNetIncome: baseSalaryValue === '' ? null : yearNetIncomeValue,
+      timeline: this.#mode === 'edit' ? (this.#data?.timeline || []) : [],
     };
+
+    try {
+      validateJobPath(data);
+    } catch (error) {
+      this.shadowRoot.querySelector('.form-error').textContent = (error as Error).message;
+      return;
+    }
 
     // Include id only in edit mode
     if (this.#mode === "edit" && this.#data) {
@@ -718,19 +795,43 @@ class EditOptionModal extends HTMLElement {
     return this.#mode;
   }
 
+  prefillLocation(path) {
+    this.#locationInputGroup.location = path.location || '';
+    this.#locationInputGroup.costOfLiving = path.costOfLiving || '';
+    this.#locationInputGroup.currency = path.currency || 'USD';
+    this.#updateTaxableIncome();
+  }
+
   #populateForm() {
-    const nameInput = this.shadowRoot.querySelector("#optionName");
-    const baseSalaryInput = this.shadowRoot.querySelector("#baseSalary");
-    const bonusesInput = this.shadowRoot.querySelector("#bonuses");
-    const taxableIncomeInput = this.shadowRoot.querySelector("#taxableIncome");
+    const baseSalaryInput = this.shadowRoot.querySelector<HTMLInputElement>("#baseSalary");
+    const bonusesInput = this.shadowRoot.querySelector<HTMLInputElement>("#bonuses");
+    const taxableIncomeInput = this.shadowRoot.querySelector<HTMLInputElement>("#taxableIncome");
     const taxableIncomeDisplay = this.shadowRoot.querySelector("#taxableIncomeDisplay");
-    const usTaxInput = this.shadowRoot.querySelector("#usTax");
+    const usTaxInput = this.shadowRoot.querySelector<HTMLInputElement>("#usTax");
     const usTaxDisplay = this.shadowRoot.querySelector("#usTaxDisplay");
     // const nonUsTaxInput = this.shadowRoot.querySelector("#nonUsTax");
-    const yearNetIncomeInput = this.shadowRoot.querySelector("#yearNetIncome");
+    const yearNetIncomeInput = this.shadowRoot.querySelector<HTMLInputElement>("#yearNetIncome");
     const yearNetIncomeDisplay = this.shadowRoot.querySelector("#yearNetIncomeDisplay");
-    const fixedExpensesDisplay = this.shadowRoot.querySelector("#fixedExpenses");
+    const fixedExpensesDisplay = this.shadowRoot.querySelector<HTMLInputElement>("#fixedExpenses");
     const estimatedCostOfLivingDisplay = this.shadowRoot.querySelector("#estimatedCostOfLivingDisplay");
+    this.shadowRoot.querySelector('.form-error').textContent = '';
+    for (const field of ['company', 'role', 'listingUrl', 'salaryMin', 'salaryMax']) {
+      this.shadowRoot.querySelector<HTMLInputElement>(`#${field}`).value = this.#mode === 'edit' ? (this.#data?.[field] ?? '') : '';
+    }
+    this.shadowRoot.querySelector<HTMLSelectElement>('#status').value = this.#mode === 'edit' ? (this.#data?.status || 'Interested') : 'Interested';
+    this.shadowRoot.querySelector<HTMLSelectElement>('#workPolicy').value = this.#mode === 'edit' ? (this.#data?.workPolicy || '') : '';
+    this.shadowRoot.querySelector<HTMLInputElement>('#officeDays').value = this.#mode === 'edit' ? (this.#data?.officeDays ?? '') : '';
+    this.#updateOfficeDays();
+    const equity = this.#mode === 'edit' ? this.#data?.equity : null;
+    this.shadowRoot.querySelector<HTMLSelectElement>('#equityType').value = equity?.type || '';
+    for (const [field, value] of Object.entries({
+      equityQuantity: equity?.quantity, strikePrice: equity?.strikePrice, strikeCurrency: equity?.strikeCurrency || 'USD', vestingStart: equity?.vestingStart,
+      vestingMonths: equity?.vestingMonths, cliffMonths: equity?.cliffMonths, equityNotes: equity?.notes,
+    })) {
+      this.shadowRoot.querySelector<HTMLInputElement>(`#${field}`).value = value ?? '';
+    }
+    this.shadowRoot.querySelector<HTMLSelectElement>('#vestingCadence').value = equity?.cadence || 'monthly';
+    this.#updateEquityFields();
 
     // Get fixed expenses from user settings and format as currency
     const userSettings = DataStore.getUserSettings();
@@ -745,10 +846,9 @@ class EditOptionModal extends HTMLElement {
 
     if (this.#mode === "add") {
       // Add mode defaults
-      nameInput.value = "";
-      baseSalaryInput.value = 0;
-      bonusesInput.value = 0;
-      taxableIncomeInput.value = 0;
+      baseSalaryInput.value = "";
+      bonusesInput.value = "0";
+      taxableIncomeInput.value = "0";
       if (taxableIncomeDisplay) {
         const defaultCurrency = userSettings.fixedExpensesCurrency || "USD";
         taxableIncomeDisplay.textContent = new Intl.NumberFormat(undefined, {
@@ -757,7 +857,7 @@ class EditOptionModal extends HTMLElement {
           maximumFractionDigits: 0
         }).format(0);
       }
-      usTaxInput.value = 0;
+      usTaxInput.value = "0";
       if (usTaxDisplay) {
         usTaxDisplay.textContent = new Intl.NumberFormat(undefined, {
           style: "currency",
@@ -766,7 +866,7 @@ class EditOptionModal extends HTMLElement {
         }).format(0);
       }
       // nonUsTaxInput.value = 0;
-      yearNetIncomeInput.value = 0;
+      yearNetIncomeInput.value = "0";
       if (yearNetIncomeDisplay) {
         const defaultCurrency = userSettings.fixedExpensesCurrency || "USD";
         yearNetIncomeDisplay.textContent = new Intl.NumberFormat(undefined, {
@@ -785,8 +885,7 @@ class EditOptionModal extends HTMLElement {
       }
     } else if (this.#data) {
       // Edit mode - populate from data
-      nameInput.value = this.#data.name || "";
-      baseSalaryInput.value = this.#data.baseSalary || 0;
+      baseSalaryInput.value = this.#data.baseSalary ?? '';
       bonusesInput.value = this.#data.bonuses || 0;
       const taxableIncomeValue = parseFloat(this.#data.taxableIncome) || 0;
       taxableIncomeInput.value = taxableIncomeValue.toFixed(2);
@@ -844,10 +943,27 @@ class EditOptionModal extends HTMLElement {
     }
   }
 
+  #updateOfficeDays() {
+    const hybrid = this.shadowRoot.querySelector<HTMLSelectElement>('#workPolicy').value === 'hybrid';
+    const group = this.shadowRoot.querySelector<HTMLElement>('#officeDaysGroup');
+    group.hidden = !hybrid;
+    group.querySelector('input').required = hybrid;
+  }
+
+  #updateEquityFields() {
+    const type = this.shadowRoot.querySelector<HTMLSelectElement>('#equityType').value;
+    this.shadowRoot.querySelector<HTMLElement>('#equityDetails').hidden = !type;
+    this.shadowRoot.querySelector<HTMLElement>('#strikePriceGroup').hidden = type !== 'options';
+    this.shadowRoot.querySelector<HTMLElement>('#strikeCurrencyGroup').hidden = type !== 'options';
+    for (const field of ['equityQuantity', 'vestingMonths', 'cliffMonths']) {
+      this.shadowRoot.querySelector<HTMLInputElement>(`#${field}`).required = Boolean(type);
+    }
+  }
+
   open() {
     this.#isOpen = true;
     // Refresh fixed expenses from user settings when opening
-    const fixedExpensesDisplay = this.shadowRoot.querySelector("#fixedExpenses");
+    const fixedExpensesDisplay = this.shadowRoot.querySelector<HTMLInputElement>("#fixedExpenses");
     if (fixedExpensesDisplay) {
       const userSettings = DataStore.getUserSettings();
       const fixedExpenses = parseFloat(userSettings.fixedExpenses) || 0;
@@ -866,9 +982,9 @@ class EditOptionModal extends HTMLElement {
     }
     const overlay = this.shadowRoot.querySelector(".modal-overlay");
     overlay.classList.add("visible");
-    // Focus the name input for better UX
+    // Focus the first identifying field.
     setTimeout(() => {
-      this.shadowRoot.querySelector("#optionName").focus();
+      this.shadowRoot.querySelector<HTMLInputElement>("#company").focus();
     }, 100);
   }
 
@@ -884,3 +1000,9 @@ class EditOptionModal extends HTMLElement {
 }
 
 customElements.define("edit-option-modal", EditOptionModal);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "edit-option-modal": EditOptionModal;
+  }
+}

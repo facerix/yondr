@@ -9,16 +9,17 @@ const whenLoaded = Promise.all(
 );
 
 whenLoaded.then(async () => {
+  const exploreLinkCaption = document.querySelector("#linkExplore .btn-caption");
   await ServiceWorkerManager.register();
   DataStore.init();
 
   DataStore.addEventListener("change", evt => {
-    switch (evt.detail.changeType) {
+    switch ((evt as CustomEvent).detail.changeType) {
       case "init":
         if (DataStore.crossroads?.length > 0) {
-          setTimeout(() => {
-            window.location.href = '/explore';
-          }, 500);
+          exploreLinkCaption.textContent = "Continue exploring";
+        } else {
+          exploreLinkCaption.textContent = "Start exploring";
         }
         break;
       default:

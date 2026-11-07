@@ -3,12 +3,29 @@
   "version": "1.0.0",
   "description": "Progressive web app to compare different job/relocation options",
   "main": "index.html",
+  "type": "module",
   "scripts": {
-    "start": "live-server --no-browser"
+    "start": "pnpm run dev",
+    "dev": "concurrently -k -n ts,assets,serve -c blue,magenta,green \"pnpm run dev:ts\" \"pnpm run dev:assets\" \"pnpm run dev:serve\"",
+    "dev:ts": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "dev:assets": "chokidar \"*.html\" \"explore/*.html\" \"plan/*.html\" \"main.css\" \"manifest.json\" \"*.svg\" \"*.png\" \"sw*.js\" \"images/**\" \"fonts/**\" -c \"node scripts/copy-assets.mjs\" --initial",
+    "dev:serve": "live-server dist --no-browser --port=8080",
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run build && node --test tests/*.test.mjs",
+    "deploy": "pnpm run build && . ./.env && test -n \"$DEPLOY_TARGET\" && rsync -avz --delete dist/ \"$DEPLOY_TARGET\"",
+    "deploy:dry-run": "pnpm run build && . ./.env && test -n \"$DEPLOY_TARGET\" && rsync -avzn --delete dist/ \"$DEPLOY_TARGET\""
   },
   "author": "Rylee Corradini",
   "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.3.0",
   "devDependencies": {
-    "live-server": "^1.2.2"
+    "chokidar-cli": "^3.0.0",
+    "concurrently": "^9.2.1",
+    "live-server": "^1.2.2",
+    "typescript": "^6.0.3"
   }
 }

@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": false,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "paths": {"/*": ["./*"]},
+    "sourceMap": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*", "components/**/*", "explore/**/*.ts", "plan/**/*.ts", "index.ts", "about.ts"],
+  "exclude": ["node_modules", "dist", "tests"]
+}

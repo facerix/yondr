@@ -403,16 +403,18 @@ class UserSettingsModal extends HTMLElement {
     // Get values from location input group
     const currentLocationValue = this.#currentLocationGroup?.location || null;
     const currentLocationCostOfLivingValue = this.#currentLocationGroup?.costOfLiving || null;
+    const currentLocationCurrencyValue = this.#currentLocationGroup?.currency || fixedExpensesCurrencyValue;
     const currentLocationCostOfLivingSpendValue = formData.get("currentLocationCostOfLivingSpend") || null;
     
     const settings = {
-      fixedExpenses: fixedExpensesValue ? parseFloat(fixedExpensesValue) : 0,
+      fixedExpenses: fixedExpensesValue ? parseFloat(String(fixedExpensesValue)) : 0,
       fixedExpensesCurrency: fixedExpensesCurrencyValue,
       citizenship: citizenshipValue || null,
       taxFilingStatus: taxFilingStatusValue,
       currentLocation: currentLocationValue || null,
+      currentLocationCurrency: currentLocationCurrencyValue,
       currentLocationCostOfLiving: currentLocationCostOfLivingValue || null,
-      currentLocationCostOfLivingSpend: currentLocationCostOfLivingSpendValue ? parseFloat(currentLocationCostOfLivingSpendValue) : null
+      currentLocationCostOfLivingSpend: currentLocationCostOfLivingSpendValue ? parseFloat(String(currentLocationCostOfLivingSpendValue)) : null
     };
 
     this.dispatchEvent(new CustomEvent("settings-save", { 
@@ -424,11 +426,11 @@ class UserSettingsModal extends HTMLElement {
   }
 
   #populateForm(settings) {
-    const fixedExpensesInput = this.shadowRoot.querySelector("#fixedExpenses");
-    const fixedExpensesCurrencyInput = this.shadowRoot.querySelector("#fixedExpensesCurrency");
-    const citizenshipInput = this.shadowRoot.querySelector("#citizenship");
-    const taxFilingStatusInput = this.shadowRoot.querySelector("#taxFilingStatus");
-    const currentLocationCostOfLivingSpendInput = this.shadowRoot.querySelector("#currentLocationCostOfLivingSpend");
+    const fixedExpensesInput = this.shadowRoot.querySelector<HTMLInputElement>("#fixedExpenses");
+    const fixedExpensesCurrencyInput = this.shadowRoot.querySelector<HTMLInputElement>("#fixedExpensesCurrency");
+    const citizenshipInput = this.shadowRoot.querySelector<HTMLInputElement>("#citizenship");
+    const taxFilingStatusInput = this.shadowRoot.querySelector<HTMLInputElement>("#taxFilingStatus");
+    const currentLocationCostOfLivingSpendInput = this.shadowRoot.querySelector<HTMLInputElement>("#currentLocationCostOfLivingSpend");
 
     if (settings) {
       fixedExpensesInput.value = settings.fixedExpenses || 0;
@@ -439,13 +441,13 @@ class UserSettingsModal extends HTMLElement {
       if (this.#currentLocationGroup) {
         this.#currentLocationGroup.location = settings.currentLocation || "";
         this.#currentLocationGroup.costOfLiving = settings.currentLocationCostOfLiving || "";
-        this.#currentLocationGroup.currency = settings.fixedExpensesCurrency || "USD";
+        this.#currentLocationGroup.currency = settings.currentLocationCurrency || settings.fixedExpensesCurrency || "USD";
       }
       
       currentLocationCostOfLivingSpendInput.value = settings.currentLocationCostOfLivingSpend || 0;
     } else {
       // Defaults
-      fixedExpensesInput.value = 0;
+      fixedExpensesInput.value = "0";
       fixedExpensesCurrencyInput.value = "USD";
       citizenshipInput.value = "";
       taxFilingStatusInput.value = "single";
@@ -456,7 +458,7 @@ class UserSettingsModal extends HTMLElement {
         this.#currentLocationGroup.currency = "USD";
       }
       
-      currentLocationCostOfLivingSpendInput.value = 0;
+      currentLocationCostOfLivingSpendInput.value = "0";
     }
   }
 
@@ -470,7 +472,7 @@ class UserSettingsModal extends HTMLElement {
     overlay.classList.add("visible");
     // Focus the first input for better UX
     setTimeout(() => {
-      this.shadowRoot.querySelector("#fixedExpenses").focus();
+      this.shadowRoot.querySelector<HTMLInputElement>("#fixedExpenses").focus();
     }, 100);
   }
 
@@ -489,3 +491,9 @@ customElements.define("user-settings-modal", UserSettingsModal);
 
 export default UserSettingsModal;
 
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "user-settings-modal": UserSettingsModal;
+  }
+}

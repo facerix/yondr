@@ -6,6 +6,7 @@ import DataStore from "../src/DataStore.js";
 import { CurrencyClient } from "../src/currencyClient.js";
 import { lookupCostOfLiving } from "../src/costOfLivingData.js";
 import { validateJobPath } from "../src/jobPathModel.js";
+import { type EquityType, type JobPathType, type EquityTypeType, type JobStatusType, type VestingCadence, type WorkPolicyType } from "../src/jobPathModel.js";
 import "../components/LocationInputGroup.js";
 import "../components/PopoverInfo.js";
 
@@ -361,6 +362,10 @@ const TEMPLATE = `
 </div>
 `;
 
+const asTypeOf = <T>(rawValue: FormDataEntryValue): T => {
+  return rawValue as string as T;
+}
+
 class EditOptionModal extends HTMLElement {
   #data = null;
   #mode = "edit";
@@ -417,7 +422,7 @@ class EditOptionModal extends HTMLElement {
 
     baseSalaryInput.addEventListener("input", this.#boundUpdateTaxableIncome);
     bonusesInput.addEventListener("input", this.#boundUpdateTaxableIncome);
-    
+
     // Listen for currency changes in location input group to update tax calculations
     if (this.#locationInputGroup) {
       this.#locationInputGroup.addEventListener("location-change", this.#boundUpdateTaxableIncome);
@@ -497,21 +502,21 @@ class EditOptionModal extends HTMLElement {
       await this.#updateEstimatedCostOfLiving(estimatedCostOfLivingDisplay);
       return;
     }
-    
+
     // Calculate and update estimated cost of living (async) - get the value for subtraction
     const estimatedCostOfLivingValue = await this.#updateEstimatedCostOfLiving(estimatedCostOfLivingDisplay);
 
     const baseSalary = parseFloat(baseSalaryInput.value) || 0;
     const bonuses = parseFloat(bonusesInput.value) || 0;
-    
+
     // Get fixed expenses from user settings
     const userSettings = DataStore.getUserSettings();
-    const fixedExpenses = parseFloat(userSettings.fixedExpenses) || 0;
+    const fixedExpenses = userSettings.fixedExpenses || 0;
     const fixedExpensesCurrency = userSettings.fixedExpensesCurrency || "USD";
-    
+
     // Get job currency from location input group
     const jobCurrency = this.#locationInputGroup?.currency || "USD";
-    
+
     // Convert baseSalary and bonuses to USD if job currency is not USD
     let baseSalaryUSD = baseSalary;
     let bonusesUSD = bonuses;
@@ -527,7 +532,7 @@ class EditOptionModal extends HTMLElement {
         bonusesUSD = bonuses;
       }
     }
-    
+
     // Convert fixed expenses to USD if they're in a different currency
     let fixedExpensesUSD = fixedExpenses;
     if (fixedExpensesCurrency !== "USD" && fixedExpenses > 0) {
@@ -544,20 +549,20 @@ class EditOptionModal extends HTMLElement {
     // Taxable income = base salary + bonuses - fixed expenses (pre-tax)
     // All values are now in USD for tax calculation
     const taxableIncomeUSD = Math.max(0, baseSalaryUSD + bonusesUSD - fixedExpensesUSD);
-    
+
     // Determine tax based on citizenship
     // For US citizens (or default), use US tax calculation
     const filingStatus = userSettings.taxFilingStatus || "single";
-    const usTaxUSD = userSettings.citizenship === "US" || !userSettings.citizenship 
+    const usTaxUSD = userSettings.citizenship === "US" || !userSettings.citizenship
       ? calculateUSIncomeTax2025(filingStatus, taxableIncomeUSD)
       : 0; // Non-US tax calculation not yet implemented
-    
+
     // Convert taxable income and year net income back to job currency for display
     // Note: usTax is always stored in USD (since it's US tax)
     let taxableIncomeDisplayValue = taxableIncomeUSD;
     let yearNetIncomeUSD = taxableIncomeUSD - usTaxUSD;
     let yearNetIncomeDisplayValue = yearNetIncomeUSD;
-    
+
     if (jobCurrency !== "USD") {
       try {
         const exchangeRate = await this.#currencyClient.getExchangeRate("USD", jobCurrency);
@@ -570,12 +575,12 @@ class EditOptionModal extends HTMLElement {
         yearNetIncomeDisplayValue = yearNetIncomeUSD;
       }
     }
-    
+
     // Subtract estimated cost of living from year net income (both should be in job currency)
     if (estimatedCostOfLivingValue !== null && estimatedCostOfLivingValue > 0) {
       yearNetIncomeDisplayValue = Math.max(0, yearNetIncomeDisplayValue - estimatedCostOfLivingValue);
     }
-    
+
     // Store values for display
     // taxableIncome is stored in job currency (hidden input for form submission)
     taxableIncomeInput.value = taxableIncomeDisplayValue.toFixed(2);
@@ -615,15 +620,15 @@ class EditOptionModal extends HTMLElement {
 
   async #updateEstimatedCostOfLiving(displayElement) {
     if (!displayElement) return null;
-    
+
     const userSettings = DataStore.getUserSettings();
-    const currentLocationCostOfLivingSpend = parseFloat(userSettings.currentLocationCostOfLivingSpend) || 0;
+    const currentLocationCostOfLivingSpend = userSettings.currentLocationCostOfLivingSpend || 0;
     const currentLocationCostOfLivingIndex = parseFloat(userSettings.currentLocationCostOfLiving) || null;
     const optionCostOfLivingIndex = parseFloat(this.#locationInputGroup?.costOfLiving) || null;
-    
+
     // Get job currency for display
     const jobCurrency = this.#locationInputGroup?.currency || userSettings.fixedExpensesCurrency || "USD";
-    
+
     // Calculate estimated cost of living if we have all required values
     if (currentLocationCostOfLivingSpend > 0 && currentLocationCostOfLivingIndex > 0 && optionCostOfLivingIndex > 0) {
       // Get current location currency by looking up the location
@@ -635,7 +640,7 @@ class EditOptionModal extends HTMLElement {
           currentLocationCurrency = locationData.currency;
         }
       }
-      
+
       // Convert user's cost of living spend to job currency if currencies differ
       let userSpendInJobCurrency = currentLocationCostOfLivingSpend;
       if (currentLocationCurrency !== jobCurrency && currentLocationCostOfLivingSpend > 0) {
@@ -648,17 +653,17 @@ class EditOptionModal extends HTMLElement {
           userSpendInJobCurrency = currentLocationCostOfLivingSpend;
         }
       }
-      
+
       // Calculate estimated cost of living
       const ratio = optionCostOfLivingIndex / currentLocationCostOfLivingIndex;
       const estimatedCostOfLiving = userSpendInJobCurrency * ratio;
-      
+
       const formattedEstimatedCostOfLiving = new Intl.NumberFormat(undefined, {
         style: "currency",
         currency: jobCurrency,
         maximumFractionDigits: 0
       }).format(estimatedCostOfLiving);
-      
+
       displayElement.textContent = formattedEstimatedCostOfLiving;
       return estimatedCostOfLiving; // Return the numeric value for use in calculations
     } else {
@@ -676,32 +681,32 @@ class EditOptionModal extends HTMLElement {
     const usTaxValue = formData.get("usTax");
     const yearNetIncomeValue = formData.get("yearNetIncome");
     const equityType = formData.get('equityType');
-    const equity = equityType ? {
-      type: equityType,
-      quantity: formData.get('equityQuantity'),
-      strikePrice: equityType === 'options' ? formData.get('strikePrice') : null,
+    const equity: EquityType = equityType ? {
+      type: asTypeOf<EquityTypeType>(equityType),
+      quantity: String(formData.get('equityQuantity')),
+      strikePrice: equityType === 'options' ? String(formData.get('strikePrice')) : null,
       strikeCurrency: equityType === 'options' ? String(formData.get('strikeCurrency') || 'USD').trim().toUpperCase() : null,
-      vestingStart: formData.get('vestingStart'),
-      vestingMonths: formData.get('vestingMonths'),
-      cliffMonths: formData.get('cliffMonths'),
-      cadence: formData.get('vestingCadence'),
+      vestingStart: String(formData.get('vestingStart')),
+      vestingMonths: String(formData.get('vestingMonths')),
+      cliffMonths: String(formData.get('cliffMonths')),
+      cadence: asTypeOf<VestingCadence>(formData.get('vestingCadence')),
       notes: String(formData.get('equityNotes') || '').trim(),
     } : null;
-    
+
     // Get values from location input group (job location, not current location)
     const locationValue = this.#locationInputGroup?.location || "";
     const costOfLivingValue = this.#locationInputGroup?.costOfLiving || null;
     const currencyValue = this.#locationInputGroup?.currency || "USD";
-    
+
     // Get fixed expenses currency from user settings
     const userSettings = DataStore.getUserSettings();
-    
+
     // Calculate cost of living spend if we have all required values
     let costOfLivingSpendValue = null;
-    const currentLocationCostOfLivingSpend = parseFloat(userSettings.currentLocationCostOfLivingSpend) || 0;
+    const currentLocationCostOfLivingSpend = userSettings.currentLocationCostOfLivingSpend || 0;
     const currentLocationCostOfLivingIndex = parseFloat(userSettings.currentLocationCostOfLiving) || null;
     const optionCostOfLivingIndex = parseFloat(costOfLivingValue) || null;
-    
+
     if (currentLocationCostOfLivingSpend > 0 && currentLocationCostOfLivingIndex > 0 && optionCostOfLivingIndex > 0) {
       // Get current location currency by looking up the location
       const currentLocation = userSettings.currentLocation || null;
@@ -712,7 +717,7 @@ class EditOptionModal extends HTMLElement {
           currentLocationCurrency = locationData.currency;
         }
       }
-      
+
       // Convert user's cost of living spend to job currency if currencies differ
       let userSpendInJobCurrency = currentLocationCostOfLivingSpend;
       if (currentLocationCurrency !== currencyValue && currentLocationCostOfLivingSpend > 0) {
@@ -725,25 +730,26 @@ class EditOptionModal extends HTMLElement {
           userSpendInJobCurrency = currentLocationCostOfLivingSpend;
         }
       }
-      
+
       // Calculate estimated cost of living spend
       const ratio = optionCostOfLivingIndex / currentLocationCostOfLivingIndex;
       costOfLivingSpendValue = userSpendInJobCurrency * ratio;
     }
-    
-    const data: { id?: string; [key: string]: unknown } = {
+
+    const data: JobPathType = {
+      id: '',
       company: String(formData.get('company') || '').trim(),
       role: String(formData.get('role') || '').trim(),
       listingUrl: String(formData.get('listingUrl') || '').trim(),
-      status: formData.get('status') || 'Interested',
-      workPolicy: formData.get('workPolicy') || '',
-      officeDays: formData.get('workPolicy') === 'hybrid' ? formData.get('officeDays') : null,
+      status: asTypeOf<JobStatusType>(formData.get('status')) || 'Interested',
+      workPolicy: asTypeOf<WorkPolicyType>(formData.get('workPolicy')) || null,
+      officeDays: formData.get('workPolicy') === 'hybrid' ? Number(formData.get('officeDays')) : null,
       location: locationValue,
       currency: currencyValue,
-      baseSalary: baseSalaryValue === '' ? null : baseSalaryValue,
-      salaryMin: formData.get('salaryMin') || null,
-      salaryMax: formData.get('salaryMax') || null,
-      bonuses: bonusesValue,
+      baseSalary: baseSalaryValue === '' ? null : String(baseSalaryValue),
+      salaryMin: String(formData.get('salaryMin')) || null,
+      salaryMax: String(formData.get('salaryMax')) || null,
+      bonuses: String(bonusesValue),
       equity,
       costOfLiving: costOfLivingValue || null,
       costOfLivingSpend: costOfLivingSpendValue,
@@ -767,10 +773,10 @@ class EditOptionModal extends HTMLElement {
       data.id = v4WithTimestamp();
     }
 
-    this.dispatchEvent(new CustomEvent("option-save", { 
+    this.dispatchEvent(new CustomEvent("option-save", {
       detail: { option: data },
       bubbles: true,
-      composed: true 
+      composed: true
     }));
     this.close();
   }
@@ -835,7 +841,7 @@ class EditOptionModal extends HTMLElement {
 
     // Get fixed expenses from user settings and format as currency
     const userSettings = DataStore.getUserSettings();
-    const fixedExpenses = parseFloat(userSettings.fixedExpenses) || 0;
+    const fixedExpenses = userSettings.fixedExpenses || 0;
     const currency = userSettings.fixedExpensesCurrency || "USD";
     const formattedExpenses = new Intl.NumberFormat(undefined, {
       style: "currency",
@@ -875,7 +881,7 @@ class EditOptionModal extends HTMLElement {
           maximumFractionDigits: 0
         }).format(0);
       }
-      
+
       // Reset location input group
       if (this.#locationInputGroup) {
         this.#locationInputGroup.location = "";
@@ -917,7 +923,7 @@ class EditOptionModal extends HTMLElement {
           maximumFractionDigits: 0
         }).format(yearNetIncomeValue);
       }
-      
+
       // Populate location input group
       if (this.#locationInputGroup) {
         this.#locationInputGroup.location = this.#data.location || "";
@@ -966,7 +972,7 @@ class EditOptionModal extends HTMLElement {
     const fixedExpensesDisplay = this.shadowRoot.querySelector<HTMLInputElement>("#fixedExpenses");
     if (fixedExpensesDisplay) {
       const userSettings = DataStore.getUserSettings();
-      const fixedExpenses = parseFloat(userSettings.fixedExpenses) || 0;
+      const fixedExpenses = userSettings.fixedExpenses || 0;
       const currency = userSettings.fixedExpensesCurrency || "USD";
       const formattedExpenses = new Intl.NumberFormat(undefined, {
         style: "currency",

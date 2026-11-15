@@ -3,7 +3,8 @@ import '../components/EditOptionModal.js';
 import '../components/JobPath.js';
 import '../components/UserSettingsModal.js';
 import { CurrencyClient } from '../src/currencyClient.js';
-import { compareJob } from '../src/jobComparison.js';
+import { compareJob, type LivingModeType, type RangeModeType } from '../src/jobComparison.js';
+import type { JobPathType } from '/src/jobPathModel.js';
   
 const whenLoaded = Promise.all(
   [
@@ -46,9 +47,11 @@ whenLoaded.then(() => {
   // DOM hooks
   const pathContainer = document.querySelector("#path-container");
   const crossroadName = document.querySelector("#crossroad-name");
+  const showCurrentMode = document.querySelector<HTMLInputElement>("#show-current");
   const rangeMode = document.querySelector<HTMLSelectElement>("#range-mode");
   const livingMode = document.querySelector<HTMLSelectElement>("#living-mode");
   const comparisonHint = document.querySelector("#comparison-hint");
+  showCurrentMode.addEventListener("change", () => render());
   rangeMode.addEventListener("change", () => render());
   livingMode.addEventListener("change", () => render());
   const startDate = document.querySelector("#start-date");
@@ -80,12 +83,14 @@ whenLoaded.then(() => {
     render();
   });
 
-  async function calculateComparisons(allPaths) {
+  async function calculateComparisons(allPaths: JobPathType[]) {
     const settings = DataStore.getUserSettings();
+    const comparisonSettings = {
+      rangeMode: rangeMode.value as RangeModeType,
+      livingMode: livingMode.value as LivingModeType,
+    };
     const currencyClient = new CurrencyClient();
-    const comparisons = await Promise.all(allPaths.map(path => compareJob(path, settings, {
-      rangeMode: rangeMode.value, livingMode: livingMode.value,
-    }, currencyClient)));
+    const comparisons = await Promise.all(allPaths.map(path => compareJob(path, settings, comparisonSettings, currencyClient)));
     await Promise.all(comparisons.map(async (item, index) => {
       if (!item) return;
       const currency = allPaths[index].currency || 'USD';
@@ -117,7 +122,8 @@ whenLoaded.then(() => {
     // The current path (if any) sits in the same flat list as the options as its
     // first card, so every option can be compared side by side.
     const currentPath = DataStore.getCurrentPath();
-    const allPaths = currentPath ? [currentPath, ...crossroad.paths] : crossroad.paths;
+    const showCurrent = !!showCurrentMode.checked;
+    const allPaths = currentPath && showCurrent ? [currentPath, ...crossroad.paths] : crossroad.paths;
 
     // Calculate max values once for all paths
     const { comparisons, maxCompensation, maxBottomLine, bestBottomLinePaths } = await calculateComparisons(allPaths);

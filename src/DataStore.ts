@@ -1,7 +1,7 @@
 // singleton class to manage the user's data
 
 import { v4WithTimestamp } from "./uuid.js";
-import { normalizePath, validateJobPath } from "./jobPathModel.js";
+import { normalizePath, validateJobPath, type JobPathType } from "./jobPathModel.js";
 
 const normalizeCrossroad = (crossroad) => {
   const normalizedCrossroad = {
@@ -19,12 +19,37 @@ const normalizeCrossroad = (crossroad) => {
   return normalizedCrossroad;
 }
 
+export type UserSettingsType = {
+  fixedExpenses: number;
+  fixedExpensesCurrency: string;
+  citizenship: string;
+  taxFilingStatus: "single" | "married_jointly" | "married_separately" | "head_of_household",
+  currentLocation: string;
+  currentLocationCurrency: string;
+  currentLocationCostOfLiving: string;
+  currentLocationCostOfLivingSpend: number;
+};
+
+export type CrossroadType = {
+  id: string;
+  name: string;
+  paths: JobPathType[];
+  startDate: string;
+  endDate?: string;
+};
+
+export type TimelineType = {
+  id: string;
+  date: string;
+  note: string;
+};
+
 let instance;
 class DataStore extends EventTarget {
-  #crossroads = [];
+  #crossroads: CrossroadType[] = [];
   #crossroadsById = new Map(); // map from uuid to crossroad object
-  #currentPath = null;
-  #userSettings = null;
+  #currentPath: JobPathType = null;
+  #userSettings: UserSettingsType = null;
 
   constructor() {
     if (instance) {
@@ -62,7 +87,7 @@ class DataStore extends EventTarget {
     }, 0);
   }
 
-  import(jsonData) {
+  import(jsonData: Record<string, any>) {
     const newCrossroads = this.#loadRecordsFromJson(jsonData);
     Array.prototype.unshift.apply(this.#crossroads, newCrossroads);
     this.#reindex();
@@ -94,7 +119,7 @@ class DataStore extends EventTarget {
     }
   }
 
-  #getDefaultUserSettings() {
+  #getDefaultUserSettings(): UserSettingsType {
     return {
       fixedExpenses: 0,
       fixedExpensesCurrency: "USD",
@@ -107,7 +132,7 @@ class DataStore extends EventTarget {
     };
   }
 
-  #emitChangeEvent(changeType, affectedRecords) {
+  #emitChangeEvent(changeType: string, affectedRecords: any) {
     const changeEvent = new CustomEvent("change", {
       detail: {
         crossroads: this.#crossroads,
@@ -130,11 +155,11 @@ class DataStore extends EventTarget {
     return this.#crossroads;
   }
 
-  getCrossroadById(id) {
+  getCrossroadById(id: string) {
     return this.#crossroadsById.get(id);
   }
 
-  getPathById(pathId) {
+  getPathById(pathId: string) {
     for (const crossroad of this.#crossroads) {
       const path = crossroad.paths?.find(p => p.id === pathId);
       if (path) return path;
@@ -142,13 +167,13 @@ class DataStore extends EventTarget {
     return null;
   }
 
-  setCurrentPath(path) {
+  setCurrentPath(path: JobPathType) {
     this.#currentPath = path;
     window.localStorage.setItem("currentPath", JSON.stringify(path));
     this.#emitChangeEvent("set-current-path", path);
   }
 
-  getCurrentPath() {
+  getCurrentPath(): JobPathType {
     return this.#currentPath;
   }
 
@@ -158,7 +183,7 @@ class DataStore extends EventTarget {
     this.#emitChangeEvent("clear-current-path", null);
   }
 
-  addCrossroad(crossroad) {
+  addCrossroad(crossroad: CrossroadType) {
     const newCrossroad = {
       ...crossroad,
       id: v4WithTimestamp(),
@@ -169,7 +194,7 @@ class DataStore extends EventTarget {
     this.#emitChangeEvent("add-crossroad", newCrossroad);
   }
 
-  updateCrossroad(crossroad) {
+  updateCrossroad(crossroad: CrossroadType) {
     const index = this.#crossroads.findIndex(cr => cr.id === crossroad.id);
     if (index > -1) {
       this.#crossroads[index] = crossroad;
@@ -178,7 +203,7 @@ class DataStore extends EventTarget {
     }
   }
 
-  deleteCrossroad(id) {
+  deleteCrossroad(id: string) {
     if (this.#crossroadsById.has(id)) {
       this.#crossroads = this.#crossroads.filter(cr => cr.id !== id);
       this.#reindex();
@@ -186,7 +211,7 @@ class DataStore extends EventTarget {
     }
   }
 
-  addPath(crossroadId, path) {
+  addPath(crossroadId: string, path: JobPathType) {
     const crossroad = this.getCrossroadById(crossroadId);
     if (crossroad) {
       const newPath = normalizePath({ ...validateJobPath(path), id: v4WithTimestamp() });
@@ -196,7 +221,7 @@ class DataStore extends EventTarget {
     }
   }
 
-  updatePath(crossroadId, path) {
+  updatePath(crossroadId: string, path: JobPathType) {
     const crossroad = this.getCrossroadById(crossroadId);
     if (crossroad) {
       const pathIndex = crossroad.paths.findIndex(p => p.id === path.id);
@@ -209,7 +234,7 @@ class DataStore extends EventTarget {
     }
   }
 
-  deletePath(crossroadId, pathId) {
+  deletePath(crossroadId: string, pathId: JobPathType) {
     const crossroad = this.getCrossroadById(crossroadId);
     if (crossroad) {
       crossroad.paths = crossroad.paths.filter(p => p.id !== pathId);
@@ -218,13 +243,13 @@ class DataStore extends EventTarget {
     }
   }
 
-  #getRequiredPath(crossroadId, pathId) {
+  #getRequiredPath(crossroadId: string, pathId: string): JobPathType {
     const path = this.getCrossroadById(crossroadId)?.paths.find(item => item.id === pathId);
     if (!path) throw new Error(`Path ${pathId} was not found in crossroad ${crossroadId}.`);
     return path;
   }
 
-  addTimelineEntry(crossroadId, pathId, entry) {
+  addTimelineEntry(crossroadId: string, pathId: string, entry: TimelineType) {
     const path = this.#getRequiredPath(crossroadId, pathId);
     this.updatePath(crossroadId, { ...path, timeline: [...path.timeline, { ...entry, id: v4WithTimestamp() }] });
   }

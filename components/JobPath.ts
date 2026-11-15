@@ -433,7 +433,7 @@ class JobPath extends HTMLElement {
     
     // Get fixed expenses from user settings (global)
     const userSettings = DataStore.getUserSettings();
-    const fixedExpenses = parseFloat(userSettings.fixedExpenses) || 0;
+    const fixedExpenses = userSettings.fixedExpenses || 0;
     const fixedExpensesCurrency = userSettings.fixedExpensesCurrency || "USD";
     
     // Format currency for display - use job location currency

@@ -34,7 +34,7 @@
 
     main {
       flex-direction: column;
-      padding: 3em 15vw;
+      padding: 3em 2vw;
 
       line-height: 1.75rem;
       text-align: justify;
@@ -60,31 +60,101 @@
       color: #7c0028;
     }
 
-    #path-container {
+    .path-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+      gap: 1.25em;
+      text-align: left;
+    }
+
+    .all-controls {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .comparison-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+      justify-content: center;
+      max-width: 40rem;
+      margin: 0;
+      padding: 0.25em 0.75em;
+      background: #fff;
+      border: 1px solid rgba(124, 0, 40, 0.15);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(124, 0, 40, 0.08);
+      text-align: left;
+    }
+    .control {
       display: flex;
       flex-direction: column;
-      gap: 1em;
+      align-items: center;
+      gap: 0.35em;
     }
-    .location-group { width: 100%; }
-    .location-group h3 { color: #7c0028; margin: 0 0 0.5em; }
-    .location-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1em; }
-    .add-here { margin-top: 0.75em; }
-    .comparison-controls { display: flex; flex-wrap: wrap; gap: 1em; align-items: center; justify-content: center; }
-    .comparison-controls label { display: flex; gap: 0.5em; align-items: center; }
-    .comparison-hint { text-align: center; margin: 0; font-size: 0.9em; }
+    .control-label {
+      color: inherit;
+      padding: 0;
+      margin: 0 auto 0.35em;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.2;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    input#show-current {
+      accent-color: #7c0028;
+      width: 1.75em;
+      height: 1.75em;
+      margin: 0;
+    }
+    .comparison-hint {
+      text-align: center;
+      margin: 0;
+      font-size: 0.9em;
+      color: rgba(48, 48, 48, 0.8);
+    }
 
     #btnAdd {
+      align-self: center;
       border: 1px dashed rgb(244, 12, 64);
-      padding: 1em;
+      padding: 1em 1.5em;
+    }
+
+    @media (max-width: 640px) {
+      main {
+        padding: 2em 1rem;
+      }
+      h2 {
+        font-size: 2.25rem;
+      }
     }
 
     #no-options-message {
       text-align: center;
+    }
+
+    #paths-region {
+      display: flex;
+      flex-direction: column;
+      gap: 3em;
+    }
+
+    #closed-section[hidden] {
       display: none;
     }
 
-    #path-container:empty + #no-options-message {
-      display: block;
+    #closed-section h3 {
+      margin: 0 0 0.75em;
+      padding-top: 1.5em;
+      border-top: 1px solid rgba(124, 0, 40, 0.15);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      text-align: center;
+      color: rgba(48, 48, 48, 0.8);
     }
 
     .settings-btn {
@@ -129,17 +199,45 @@
     <div class="timespan">
       <span id="start-date"></span>&nbsp;&ndash;&nbsp;<span id="end-date"></span>
     </div>
-    <div class="comparison-controls">
-      <label>Salary ranges <select id="range-mode"><option value="off">Off</option><option value="median">Midpoint</option><option value="max">Maximum</option></select></label>
-      <label>Living costs <select id="living-mode"><option value="relocate">Relocate</option><option value="commute">Commute</option></select></label>
+    <div class="all-controls">
+      <div class="comparison-controls">
+        <label class="control"><span class="control-label">Include current</span><input id="show-current" type="checkbox" checked /></label>
+
+        <radio-group id="range-mode" label="Salaries">
+          <radio-option value="off" checked label="Only count concrete base">
+            <img src="/images/fixed.svg" alt="" />
+          </radio-option>
+          <radio-option value="median" label="Use range midpoint">
+            <img src="/images/midpoint.svg" alt="" />
+          </radio-option>
+          <radio-option value="max" label="Use range maximum">
+            <img src="/images/maximum.svg" alt="" />
+          </radio-option>
+        </radio-group>
+
+        <radio-group id="living-mode" label="Living costs">
+          <radio-option value="relocate" checked label="Relocate">
+            <img src="/images/relocate.svg" alt="Relocate" />
+          </radio-option>
+          <radio-option value="commute" label="Commute">
+            <img src="/images/commute.svg" alt="Commute" />
+          </radio-option>
+        </radio-group>
+      </div>
+      <button id="btnAdd" class="btn">
+        <img src="/images/pin-plus.svg" alt="add" />
+        Add an Option
+      </button>
     </div>
-    <p class="comparison-hint" id="comparison-hint"></p>
-    <div id="path-container"></div>
-    <p id="no-options-message">You haven't added any options to this crossroad yet.<br/>Add one to get started!</p>
-    <button id="btnAdd" class="btn">
-      <img src="/images/pin-plus.svg" alt="add" />
-      Add an Option
-    </button>
+    <p class="comparison-hint u-hidden" id="comparison-hint"></p>
+    <p id="no-options-message" hidden>You haven't added any options to this crossroad yet.<br/>Add one to get started!</p>
+    <div id="paths-region">
+      <div id="path-container" class="path-grid"></div>
+      <section id="closed-section" hidden aria-labelledby="closed-heading">
+        <h3 id="closed-heading">Rejected &amp; withdrawn</h3>
+        <div id="closed-path-container" class="path-grid"></div>
+      </section>
+    </div>
   </main>  
   <edit-option-modal></edit-option-modal>
   <user-settings-modal></user-settings-modal>

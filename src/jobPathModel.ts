@@ -1,21 +1,73 @@
-export const JOB_STATUSES = ['Interested', 'Applied', 'Interviewing', 'Offer', 'Accepted', 'Rejected', 'Withdrawn'];
-export const WORK_POLICIES = ['in-office', 'hybrid', 'remote'];
-export const EQUITY_TYPES = ['options', 'rsu'];
-export const VESTING_CADENCES = ['monthly', 'quarterly', 'annually'];
+import type { LivingModeType, RangeModeType } from "./jobComparison";
 
-export function formatJobOptionName(path) {
+export const JOB_STATUSES = ['Interested', 'Applied', 'Interviewing', 'Offer', 'Accepted', 'Rejected', 'Withdrawn'] as const;
+export const WORK_POLICIES = ['in-office', 'hybrid', 'remote'] as const;
+export const EQUITY_TYPES = ['options', 'rsu'] as const;
+export const VESTING_CADENCES = ['monthly', 'quarterly', 'annually'] as const;
+
+export type JobStatusType = typeof JOB_STATUSES[number];
+export type WorkPolicyType = typeof WORK_POLICIES[number];
+export type EquityTypeType = typeof EQUITY_TYPES[number];
+export type VestingCadence = typeof VESTING_CADENCES[number];
+
+export type JobPathType = {
+  id: string;
+  company: string;
+  role: string;
+  name?: string; // legacy field
+  listingUrl: string;
+  location: string;
+
+  baseSalary?: string;
+  bonuses?: string;
+  costOfLiving: string;
+  costOfLivingSpend?: string;
+  currency: string;
+  equity?: EquityType;
+  officeDays?: number
+  salaryMax?: string;
+  salaryMin?: string;
+  status: typeof JOB_STATUSES[number];
+  taxableIncome?: any;
+  timeline: TimelineEntry[];
+  usTax?: any;
+  workPolicy?: typeof WORK_POLICIES[number];
+  yearNetIncome?: any
+}
+
+export type EquityType = {  
+  type: typeof EQUITY_TYPES[number];
+  cadence: typeof VESTING_CADENCES[number];
+  cliffMonths?: string;
+  notes?: string;
+  quantity?: string;
+  strikeCurrency?: string;
+  strikePrice?: string;
+  vestingMonths?: string;
+  vestingStart?: string;
+}
+
+type TimelineEntry = {
+  id: string;
+  date: string;
+  title?: string;
+  note: string;
+  url?: string;
+}
+
+export function formatJobOptionName(path: JobPathType) {
   const company = String(path.company ?? '').trim();
   const role = String(path.role ?? '').trim();
   return [company, role].filter(Boolean).join(' · ') || String(path.name ?? '').trim();
 }
 
-export function formatEquityGrant(equity) {
+export function formatEquityGrant(equity: EquityType) {
   if (!equity?.type) return '';
   const quantity = Number(equity.quantity).toLocaleString('en-US');
   return `${quantity} ${equity.type === 'rsu' ? 'RSUs' : 'options'}`;
 }
 
-export function formatEquityTerms(equity) {
+export function formatEquityTerms(equity: EquityType) {
   if (!equity?.type) return '';
   const duration = Number(equity.vestingMonths);
   const durationText = duration % 12 === 0 ? `${duration / 12} ${duration === 12 ? 'year' : 'years'}` : `${duration} months`;
@@ -26,17 +78,17 @@ export function formatEquityTerms(equity) {
   return `${durationText} vesting${cliffText} · ${equity.cadence}${strike}`;
 }
 
-export function formatEquitySummary(equity) {
+export function formatEquitySummary(equity: EquityType) {
   if (!equity?.type) return '';
   return `${formatEquityGrant(equity)} · ${formatEquityTerms(equity)}`;
 }
 
-export function hasConcreteSalary(path) {
+export function hasConcreteSalary(path: JobPathType) {
   return path.baseSalary !== null && path.baseSalary !== undefined && path.baseSalary !== '' &&
     Number.isFinite(Number(path.baseSalary)) && Number(path.baseSalary) >= 0;
 }
 
-export function getComparableMetrics(path) {
+export function getComparableMetrics(path: JobPathType) {
   if (!hasConcreteSalary(path)) return null;
   const compensation = Number(path.baseSalary) + (Number(path.bonuses) || 0);
   const bottomLine = path.yearNetIncome !== null && path.yearNetIncome !== undefined && path.yearNetIncome !== ''
@@ -44,7 +96,7 @@ export function getComparableMetrics(path) {
   return { compensation, bottomLine };
 }
 
-export function selectedSalary(path, rangeMode = 'off') {
+export function selectedSalary(path: JobPathType, rangeMode = 'off') {
   if (hasConcreteSalary(path)) return { base: Number(path.baseSalary), projected: false };
   const min = path.salaryMin == null || path.salaryMin === '' ? null : Number(path.salaryMin);
   const max = path.salaryMax == null || path.salaryMax === '' ? null : Number(path.salaryMax);
@@ -53,7 +105,15 @@ export function selectedSalary(path, rangeMode = 'off') {
   return null;
 }
 
-export function comparisonValues(path, { rangeMode = 'off', livingMode = 'relocate', fixedExpenses = 0, livingCost = null, tax = 0 } = {}) {
+type ComparisonSettings = {
+  rangeMode: RangeModeType;
+  livingMode: LivingModeType;
+  fixedExpenses: number;
+  livingCost?: number;
+  tax: number;
+}
+export function comparisonValues(path: JobPathType, comparisonSettings: ComparisonSettings) {
+  const { rangeMode = 'off', livingMode = 'relocate', fixedExpenses = 0, livingCost = null, tax = 0 } = comparisonSettings || {};
   const salary = selectedSalary(path, rangeMode);
   if (!salary) return null;
   const compensation = salary.base + (Number(path.bonuses) || 0);
@@ -65,7 +125,7 @@ export function sortTimeline(entries = []) {
   return [...entries].sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export function validateHttpUrl(value) {
+export function validateHttpUrl(value: string) {
   if (!value) return '';
   let parsed;
   try { parsed = new URL(value); } catch { throw new Error('Enter a valid URL.'); }
@@ -73,7 +133,7 @@ export function validateHttpUrl(value) {
   return parsed.href;
 }
 
-export function validateJobPath(path) {
+export function validateJobPath(path: JobPathType) {
   if ((path.company !== undefined || path.role !== undefined) &&
     (String(path.company ?? '').trim() || String(path.role ?? '').trim() || !String(path.name ?? '').trim())) {
     if (!String(path.company ?? '').trim()) throw new Error('Company is required.');
@@ -116,7 +176,7 @@ export function validateJobPath(path) {
   return path;
 }
 
-export function normalizePath(path) {
+export function normalizePath(path: JobPathType) {
   return {
     ...path,
     company: path.company ?? '',
@@ -130,4 +190,27 @@ export function normalizePath(path) {
     equity: path.equity ?? null,
     timeline: Array.isArray(path.timeline) ? path.timeline : [],
   };
+}
+
+export const CLOSED_STATUSES: readonly JobStatusType[] = ['Rejected', 'Withdrawn'];
+
+export function isClosedStatus(status: JobStatusType | undefined) {
+  return CLOSED_STATUSES.includes(status);
+}
+
+/**
+ * Splits paths for the Plan page: open jobs ranked by descending bottom line
+ * (unknown bottom lines last, ties keep input order), closed jobs in input order.
+ */
+export function arrangePlanPaths<T extends Pick<JobPathType, 'status'>>(paths: T[], bottomLineOf: (path: T) => number | null | undefined) {
+  const active = paths.filter(path => !isClosedStatus(path.status));
+  const inactive = paths.filter(path => isClosedStatus(path.status));
+  const ranked = active.map(path => ({ path, bottomLine: bottomLineOf(path) ?? null }));
+  ranked.sort((a, b) => {
+    if (a.bottomLine === b.bottomLine) return 0;
+    if (a.bottomLine === null) return 1;
+    if (b.bottomLine === null) return -1;
+    return b.bottomLine - a.bottomLine;
+  });
+  return { active: ranked.map(item => item.path), inactive };
 }

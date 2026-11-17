@@ -13,6 +13,7 @@
     "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.json && node scripts/copy-assets.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm run build && node --test tests/*.test.mjs",
+    "test:browser": "pnpm run build && node --test tests/browser/*.test.mjs",
     "deploy": "pnpm run build && . ./.env && test -n \"$DEPLOY_TARGET\" && rsync -avz --delete dist/ \"$DEPLOY_TARGET\"",
     "deploy:dry-run": "pnpm run build && . ./.env && test -n \"$DEPLOY_TARGET\" && rsync -avzn --delete dist/ \"$DEPLOY_TARGET\""
   },

@@ -1,15 +1,17 @@
 import DataStore from '../src/DataStore.js';
 import '../components/EditOptionModal.js';
 import '../components/JobPath.js';
+import RadioGroup from '../components/RadioGroup.js';
 import '../components/UserSettingsModal.js';
 import { CurrencyClient } from '../src/currencyClient.js';
 import { compareJob, type LivingModeType, type RangeModeType } from '../src/jobComparison.js';
-import type { JobPathType } from '/src/jobPathModel.js';
+import { arrangePlanPaths, isClosedStatus, type JobPathType } from '../src/jobPathModel.js';
   
 const whenLoaded = Promise.all(
   [
     customElements.whenDefined("edit-option-modal"),
     customElements.whenDefined("job-path"),
+    customElements.whenDefined("radio-group"),
     customElements.whenDefined("user-settings-modal"),
   ],
 );
@@ -23,9 +25,6 @@ whenLoaded.then(() => {
   const crossroadId = url.searchParams.get("crossroad");
   DataStore.init();
   window.currencyClient = new CurrencyClient();
-  // window.currencyClient.getExchangeRate("USD", "EUR").then(rate => {
-  //   console.log(rate);
-  // });
 
   // Load user settings into modal
   const userSettings = DataStore.getUserSettings();
@@ -46,10 +45,13 @@ whenLoaded.then(() => {
 
   // DOM hooks
   const pathContainer = document.querySelector("#path-container");
+  const closedSection = document.querySelector<HTMLElement>("#closed-section");
+  const closedPathContainer = document.querySelector("#closed-path-container");
+  const noOptionsMessage = document.querySelector<HTMLElement>("#no-options-message");
   const crossroadName = document.querySelector("#crossroad-name");
   const showCurrentMode = document.querySelector<HTMLInputElement>("#show-current");
   const rangeMode = document.querySelector<HTMLSelectElement>("#range-mode");
-  const livingMode = document.querySelector<HTMLSelectElement>("#living-mode");
+  const livingMode = document.querySelector<RadioGroup>("#living-mode");
   const comparisonHint = document.querySelector("#comparison-hint");
   showCurrentMode.addEventListener("change", () => render());
   rangeMode.addEventListener("change", () => render());
@@ -57,33 +59,36 @@ whenLoaded.then(() => {
   const startDate = document.querySelector("#start-date");
   const endDate = document.querySelector("#end-date");
 
-  pathContainer.addEventListener("path-remove", async (evt) => {
+  // Card events bubble from both the ranked and closed sections.
+  const pathsRegion = document.querySelector("#paths-region");
+
+  pathsRegion.addEventListener("path-remove", async (evt) => {
     const path = (evt as CustomEvent).detail.path;
     DataStore.deletePath(crossroadId, path.id);
     await render();
   });
 
-  pathContainer.addEventListener("path-edit", evt => {
+  pathsRegion.addEventListener("path-edit", evt => {
     const path = (evt as CustomEvent).detail.path;
     editOptionModal.mode = "edit";
     editOptionModal.data = path;
     editOptionModal.open();
   });
 
-  pathContainer.addEventListener('timeline-add', evt => {
+  pathsRegion.addEventListener('timeline-add', evt => {
     DataStore.addTimelineEntry(crossroadId, (evt as CustomEvent).detail.pathId, (evt as CustomEvent).detail.entry);
     render();
   });
-  pathContainer.addEventListener('timeline-update', evt => {
+  pathsRegion.addEventListener('timeline-update', evt => {
     DataStore.updateTimelineEntry(crossroadId, (evt as CustomEvent).detail.pathId, (evt as CustomEvent).detail.entry);
     render();
   });
-  pathContainer.addEventListener('timeline-delete', evt => {
+  pathsRegion.addEventListener('timeline-delete', evt => {
     DataStore.deleteTimelineEntry(crossroadId, (evt as CustomEvent).detail.pathId, (evt as CustomEvent).detail.entryId);
     render();
   });
 
-  async function calculateComparisons(allPaths: JobPathType[]) {
+  async function calculateComparisons(allPaths: JobPathType[], rankedPaths: JobPathType[]) {
     const settings = DataStore.getUserSettings();
     const comparisonSettings = {
       rangeMode: rangeMode.value as RangeModeType,
@@ -98,19 +103,23 @@ whenLoaded.then(() => {
       item.referenceCompensation = item.compensation * rate;
       item.referenceBottomLine = item.bottomLine == null ? null : item.bottomLine * rate;
     }));
-    const maxCompensation = Math.max(0, ...comparisons.map(item => item?.referenceCompensation ?? 0));
-    const maxBottomLine = Math.max(0, ...comparisons.map(item => item?.referenceBottomLine ?? 0));
+    const comparisonsById = new Map(allPaths.map((path, index) => [path.id, comparisons[index]]));
+    // Bar scales and the best badge reflect only ranked (open) jobs.
+    const rankedComparisons = rankedPaths.map(path => comparisonsById.get(path.id));
+    const maxCompensation = Math.max(0, ...rankedComparisons.map(item => item?.referenceCompensation ?? 0));
+    const maxBottomLine = Math.max(0, ...rankedComparisons.map(item => item?.referenceBottomLine ?? 0));
     const bestBottomLinePaths = new Set();
-    comparisons.forEach((item, index) => {
+    rankedComparisons.forEach((item, index) => {
       if (item?.referenceBottomLine != null && item.referenceBottomLine === maxBottomLine && maxBottomLine > 0) {
-        bestBottomLinePaths.add(allPaths[index].id);
+        bestBottomLinePaths.add(rankedPaths[index].id);
       }
     });
-    return { comparisons: new Map(allPaths.map((path, index) => [path.id, comparisons[index]])), maxCompensation, maxBottomLine, bestBottomLinePaths };
+    return { comparisons: comparisonsById, maxCompensation, maxBottomLine, bestBottomLinePaths };
   }
 
   const render = async () => {
     pathContainer.innerHTML = "";
+    closedPathContainer.innerHTML = "";
     const crossroad = DataStore.getCrossroadById(crossroadId);
     if (!crossroad) {
       return;
@@ -123,16 +132,18 @@ whenLoaded.then(() => {
     // first card, so every option can be compared side by side.
     const currentPath = DataStore.getCurrentPath();
     const showCurrent = !!showCurrentMode.checked;
-    const allPaths = currentPath && showCurrent ? [currentPath, ...crossroad.paths] : crossroad.paths;
+    const allPaths: JobPathType[] = currentPath && showCurrent ? [currentPath, ...crossroad.paths] : crossroad.paths;
 
-    // Calculate max values once for all paths
-    const { comparisons, maxCompensation, maxBottomLine, bestBottomLinePaths } = await calculateComparisons(allPaths);
+    const openPaths = allPaths.filter(path => !isClosedStatus(path.status));
+    const { comparisons, maxCompensation, maxBottomLine, bestBottomLinePaths } = await calculateComparisons(allPaths, openPaths);
+    // Rank by USD-normalized bottom line so mixed currencies compare fairly.
+    const { active, inactive } = arrangePlanPaths(allPaths, path => comparisons.get(path.id)?.referenceBottomLine);
     const settings = DataStore.getUserSettings();
     comparisonHint.textContent = livingMode.value === 'commute'
       ? `Using current living costs${settings.currentLocation ? ` in ${settings.currentLocation}` : ''}. ${settings.currentLocationCostOfLivingSpend == null ? 'Set current living costs in settings to see bottom lines.' : ''}`
       : 'Using each job location’s estimated living costs. Missing estimates show no bottom line.';
 
-    allPaths.forEach(path => {
+    const createPathElement = (path: JobPathType) => {
       const isCurrent = path === currentPath;
       const pathElement = document.createElement("job-path");
       // Set max values before pathData to avoid rendering with incorrect defaults
@@ -143,8 +154,12 @@ whenLoaded.then(() => {
       pathElement.isCurrent = isCurrent;
       pathElement.readonly = isCurrent;
       pathElement.hasBestBottomLine = bestBottomLinePaths.has(path.id);
-      pathContainer.append(pathElement);
-    });
+      return pathElement;
+    };
+    pathContainer.append(...active.map(createPathElement));
+    closedPathContainer.append(...inactive.map(createPathElement));
+    closedSection.hidden = inactive.length === 0;
+    noOptionsMessage.hidden = crossroad.paths.length > 0;
   }
 
   btnAdd.addEventListener("click", evt => {

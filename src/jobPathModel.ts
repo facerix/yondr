@@ -191,3 +191,26 @@ export function normalizePath(path: JobPathType) {
     timeline: Array.isArray(path.timeline) ? path.timeline : [],
   };
 }
+
+export const CLOSED_STATUSES: readonly JobStatusType[] = ['Rejected', 'Withdrawn'];
+
+export function isClosedStatus(status: JobStatusType | undefined) {
+  return CLOSED_STATUSES.includes(status);
+}
+
+/**
+ * Splits paths for the Plan page: open jobs ranked by descending bottom line
+ * (unknown bottom lines last, ties keep input order), closed jobs in input order.
+ */
+export function arrangePlanPaths<T extends Pick<JobPathType, 'status'>>(paths: T[], bottomLineOf: (path: T) => number | null | undefined) {
+  const active = paths.filter(path => !isClosedStatus(path.status));
+  const inactive = paths.filter(path => isClosedStatus(path.status));
+  const ranked = active.map(path => ({ path, bottomLine: bottomLineOf(path) ?? null }));
+  ranked.sort((a, b) => {
+    if (a.bottomLine === b.bottomLine) return 0;
+    if (a.bottomLine === null) return 1;
+    if (b.bottomLine === null) return -1;
+    return b.bottomLine - a.bottomLine;
+  });
+  return { active: ranked.map(item => item.path), inactive };
+}

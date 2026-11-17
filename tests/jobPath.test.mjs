@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { hasConcreteSalary, validateJobPath, sortTimeline, getComparableMetrics, selectedSalary, comparisonValues, formatEquityGrant, formatEquityTerms, formatEquitySummary, formatJobOptionName } from '../dist/src/jobPathModel.js';
+import { arrangePlanPaths, isClosedStatus, JOB_STATUSES, hasConcreteSalary, validateJobPath, sortTimeline, getComparableMetrics, selectedSalary, comparisonValues, formatEquityGrant, formatEquityTerms, formatEquitySummary, formatJobOptionName } from '../dist/src/jobPathModel.js';
 import { renderNoteMarkdown } from '../dist/src/noteMarkdown.js';
 import { compareJob } from '../dist/src/jobComparison.js';
 
@@ -90,4 +90,28 @@ test('markdown notes render formatting while escaping HTML and unsafe links', ()
   assert.match(html, /<strong>Bold<\/strong>/);
   assert.match(html, /href="https:\/\/example.com\/"/);
   assert.doesNotMatch(html, /<img|href="javascript:/);
+});
+
+test('plan arrangement ranks active jobs by bottom line and sets closed jobs aside in original order', () => {
+  const paths = [
+    { id: 'low', status: 'Applied' },
+    { id: 'rejected', status: 'Rejected' },
+    { id: 'unknown', status: 'Interested' },
+    { id: 'high', status: 'Offer' },
+    { id: 'withdrawn', status: 'Withdrawn' },
+    { id: 'tieA', status: 'Interviewing' },
+    { id: 'legacy' },
+    { id: 'tieB', status: 'Accepted' },
+    { id: 'closedRich', status: 'Rejected' },
+  ];
+  const bottomLines = { low: 10, rejected: 500, unknown: null, high: 300, withdrawn: 1, tieA: 50, legacy: 0, tieB: 50, closedRich: 900 };
+  const { active, inactive } = arrangePlanPaths(paths, path => bottomLines[path.id]);
+  assert.deepEqual(active.map(path => path.id), ['high', 'tieA', 'tieB', 'low', 'legacy', 'unknown']);
+  assert.deepEqual(inactive.map(path => path.id), ['rejected', 'withdrawn', 'closedRich']);
+  assert.deepEqual(paths.map(path => path.id), ['low', 'rejected', 'unknown', 'high', 'withdrawn', 'tieA', 'legacy', 'tieB', 'closedRich']);
+});
+
+test('only rejected and withdrawn statuses close a job', () => {
+  assert.deepEqual(JOB_STATUSES.filter(status => isClosedStatus(status)), ['Rejected', 'Withdrawn']);
+  assert.equal(isClosedStatus(undefined), false);
 });

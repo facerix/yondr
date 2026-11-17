@@ -34,7 +34,7 @@
 
     main {
       flex-direction: column;
-      padding: 3em 15vw;
+      padding: 3em 2vw;
 
       line-height: 1.75rem;
       text-align: justify;
@@ -60,22 +60,27 @@
       color: #7c0028;
     }
 
-    #path-container {
+    .path-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
       gap: 1.25em;
       text-align: left;
     }
 
+    .all-controls {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
     .comparison-controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 1em 2em;
-      align-items: flex-end;
+      gap: 1em;
       justify-content: center;
       max-width: 40rem;
-      margin: 0 auto;
-      padding: 1em 1.25em;
+      margin: 0;
+      padding: 0.25em 0.75em;
       background: #fff;
       border: 1px solid rgba(124, 0, 40, 0.15);
       border-radius: 8px;
@@ -83,58 +88,26 @@
       text-align: left;
     }
     .control {
-      flex: 1 1 12rem;
       display: flex;
       flex-direction: column;
+      align-items: center;
       gap: 0.35em;
     }
     .control-label {
+      color: inherit;
+      padding: 0;
+      margin: 0 auto 0.35em;
       font-size: 0.75rem;
       font-weight: 600;
+      line-height: 1.2;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: rgba(124, 0, 40, 0.75);
     }
-    .select-wrap {
-      position: relative;
-      display: flex;
-    }
-    .select-wrap select {
-      width: 100%;
-    }
-    .select-wrap::after {
-      content: "";
-      position: absolute;
-      right: 0.9em;
-      top: 45%;
-      width: 0.45em;
-      height: 0.45em;
-      border-right: 2px solid #7c0028;
-      border-bottom: 2px solid #7c0028;
-      transform: translateY(-50%) rotate(45deg);
-      pointer-events: none;
-    }
-    .select-wrap select {
-      appearance: none;
-      -webkit-appearance: none;
-      min-width: 0;
-      padding: 0.45em 2.4em 0.45em 0.9em;
-      border: 1px solid rgba(124, 0, 40, 0.35);
-      border-radius: 999px;
-      background: #fff;
-      color: #7c0028;
-      font: inherit;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: border-color 0.2s ease, background-color 0.2s ease;
-    }
-    .select-wrap select:hover {
-      border-color: #7c0028;
-      background-color: #fdf6f8;
-    }
-    .select-wrap select:focus-visible {
-      outline: 2px double #7c0028;
-      outline-offset: 2px;
+    input#show-current {
+      accent-color: #7c0028;
+      width: 1.75em;
+      height: 1.75em;
+      margin: 0;
     }
     .comparison-hint {
       text-align: center;
@@ -160,11 +133,28 @@
 
     #no-options-message {
       text-align: center;
+    }
+
+    #paths-region {
+      display: flex;
+      flex-direction: column;
+      gap: 3em;
+    }
+
+    #closed-section[hidden] {
       display: none;
     }
 
-    #path-container:empty + #no-options-message {
-      display: block;
+    #closed-section h3 {
+      margin: 0 0 0.75em;
+      padding-top: 1.5em;
+      border-top: 1px solid rgba(124, 0, 40, 0.15);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      text-align: center;
+      color: rgba(48, 48, 48, 0.8);
     }
 
     .settings-btn {
@@ -209,17 +199,45 @@
     <div class="timespan">
       <span id="start-date"></span>&nbsp;&ndash;&nbsp;<span id="end-date"></span>
     </div>
-    <div class="comparison-controls">
-      <label class="control"><span class="control-label">Salary ranges</span><span class="select-wrap"><select id="range-mode"><option value="off">Off</option><option value="median">Midpoint</option><option value="max">Maximum</option></select></span></label>
-      <label class="control"><span class="control-label">Living costs</span><span class="select-wrap"><select id="living-mode"><option value="relocate">Relocate</option><option value="commute">Commute</option></select></span></label>
+    <div class="all-controls">
+      <div class="comparison-controls">
+        <label class="control"><span class="control-label">Include current</span><input id="show-current" type="checkbox" checked /></label>
+
+        <radio-group id="range-mode" label="Salaries">
+          <radio-option value="off" checked label="Only count concrete base">
+            <img src="/images/fixed.svg" alt="" />
+          </radio-option>
+          <radio-option value="median" label="Use range midpoint">
+            <img src="/images/midpoint.svg" alt="" />
+          </radio-option>
+          <radio-option value="max" label="Use range maximum">
+            <img src="/images/maximum.svg" alt="" />
+          </radio-option>
+        </radio-group>
+
+        <radio-group id="living-mode" label="Living costs">
+          <radio-option value="relocate" checked label="Relocate">
+            <img src="/images/relocate.svg" alt="Relocate" />
+          </radio-option>
+          <radio-option value="commute" label="Commute">
+            <img src="/images/commute.svg" alt="Commute" />
+          </radio-option>
+        </radio-group>
+      </div>
+      <button id="btnAdd" class="btn">
+        <img src="/images/pin-plus.svg" alt="add" />
+        Add an Option
+      </button>
     </div>
-    <p class="comparison-hint" id="comparison-hint"></p>
-    <div id="path-container"></div>
-    <p id="no-options-message">You haven't added any options to this crossroad yet.<br/>Add one to get started!</p>
-    <button id="btnAdd" class="btn">
-      <img src="/images/pin-plus.svg" alt="add" />
-      Add an Option
-    </button>
+    <p class="comparison-hint u-hidden" id="comparison-hint"></p>
+    <p id="no-options-message" hidden>You haven't added any options to this crossroad yet.<br/>Add one to get started!</p>
+    <div id="paths-region">
+      <div id="path-container" class="path-grid"></div>
+      <section id="closed-section" hidden aria-labelledby="closed-heading">
+        <h3 id="closed-heading">Rejected &amp; withdrawn</h3>
+        <div id="closed-path-container" class="path-grid"></div>
+      </section>
+    </div>
   </main>  
   <edit-option-modal></edit-option-modal>
   <user-settings-modal></user-settings-modal>
